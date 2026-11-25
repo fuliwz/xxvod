@@ -39,9 +39,12 @@ button,input{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:
 .cf-category-tabs{margin-top:-7px}
 .cf-category-tabs .cf-chip{flex:0 0 auto}
 
-/* Hola Spark / VideoJS player sizing */
-.cf-player-box .video-js{width:100%;height:100%;font-family:var(--cf-font-ui)}
-.cf-player-box .vjs-tech{object-fit:contain}
+/* Plyr UI with HLS.js playback engine */
+.cf-player-box .plyr{width:100%;height:100%;--plyr-color-main:#00e5ff;--plyr-video-control-color:#f5f2fb;--plyr-video-control-color-hover:#00e5ff;--plyr-menu-background:#171326;--plyr-menu-color:#f5f2fb;--plyr-tooltip-background:#171326;--plyr-tooltip-color:#f5f2fb;font-family:var(--cf-font-ui)}
+.cf-player-box .plyr__video-wrapper{height:100%;background:#000}
+.cf-player-box .plyr video{width:100%;height:100%;object-fit:contain}
+.cf-player-box .plyr__control--overlaid{background:#8a2be2}
+.cf-player-box .plyr__control--overlaid:hover{background:#00e5ff;color:#080711}
 
 
 /* All categories: root groups with their child category links */
