@@ -1,7 +1,7 @@
 <template>
   <section class="cf-page cf-list-page">
     <header class="cf-page-title">
-      <div><span class="cf-eyebrow"></span><h1 class="cf-h2">全部分类</h1><p>按分类浏览视频内容</p></div>
+      <div><h1 class="cf-h2">全部分类</h1><p>按分类浏览视频内容</p></div>
     </header>
     <div v-if="loading" class="cf-empty"><span class="cf-spinner"></span><span>正在加载分类…</span></div>
     <div v-else-if="rootCategories.length" class="cf-all-categories">
