@@ -7,9 +7,7 @@
           <div class="cf-player-shell">
             <div class="cf-player-bar"><span><i class="fa-solid fa-circle-play"></i> 正在播放</span><span>视频播放器</span></div>
             <div class="cf-player-box">
-              <video id="xxvod-hola-player" ref="videoEl" class="video-js vjs-default-skin" :poster="item.poster || undefined" playsinline webkit-playsinline controls preload="metadata">
-                <source v-if="activeEpisode" :key="episodeIndex" :src="activeEpisode.url" :type="mediaType(activeEpisode.url)" />
-              </video>
+              <video id="xxvod-player" ref="videoEl" class="xxvod-player" :poster="item.poster || undefined" playsinline webkit-playsinline controls preload="metadata"></video>
             </div>
           </div>
           <section class="cf-detail-panel">
@@ -41,6 +39,9 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import Hls from 'hls.js'
+import Plyr from 'plyr'
+import 'plyr/dist/plyr.css'
 import { getDetail, getRelatedVideos, parsePlaySources } from '../api/vod'
 import { saveHistory } from '../utils/history'
 import VideoGrid from '../components/VideoGrid.vue'
@@ -52,9 +53,10 @@ const loading = ref(true)
 const playerError = ref('')
 const videoEl = ref(null)
 const episodeIndex = ref(0)
-let sparkPromise = null
+
+let hls = null
+let player = null
 let token = 0
-let sparkInitialized = false
 
 // Keep only the first CMS play source (线路一).
 const sources = computed(() => parsePlaySources(item.value).slice(0, 1))
@@ -66,83 +68,134 @@ function formatViews(value) {
   return n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1000 ? (n / 1e3).toFixed(1) + 'K' : String(n)
 }
 
+function isHlsUrl(url = '') {
+  return /\.m3u8(?:$|[?#])/i.test(url)
+}
+
 function mediaType(url = '') {
-  if (/\.m3u8(?:$|[?#])/i.test(url)) return 'application/x-mpegURL'
+  if (isHlsUrl(url)) return 'application/vnd.apple.mpegurl'
   if (/\.mpd(?:$|[?#])/i.test(url)) return 'application/dash+xml'
   if (/\.webm(?:$|[?#])/i.test(url)) return 'video/webm'
   if (/\.ogv(?:$|[?#])/i.test(url)) return 'video/ogg'
   return 'video/mp4'
 }
 
-function getSparkInstance() {
-  const videojs = window.videojs
-  if (!videojs) return null
-  return videojs.getPlayer?.('xxvod-hola-player') || videojs.players?.['xxvod-hola-player'] || null
+function setNormalAudio(video) {
+  // Prevent a stale playback-rate or pitch setting from carrying across episodes.
+  video.defaultPlaybackRate = 1
+  video.playbackRate = 1
+  if ('preservesPitch' in video) video.preservesPitch = true
+  if ('webkitPreservesPitch' in video) video.webkitPreservesPitch = true
+  if ('mozPreservesPitch' in video) video.mozPreservesPitch = true
 }
 
-function loadSparkPlayer() {
-  if (typeof window.hola_player === 'function') return Promise.resolve()
-  if (sparkPromise) return sparkPromise
+function ensurePlayer(video) {
+  if (player) return player
 
-  sparkPromise = new Promise((resolve, reject) => {
-    let script = document.getElementById('hola-spark-player-script')
-    if (script?.dataset.loaded === 'true' && typeof window.hola_player === 'function') {
-      resolve()
-      return
-    }
-    if (script?.dataset.failed === 'true') {
-      script.remove()
-      script = null
-    }
-
-    const isNew = !script
-    if (!script) {
-      script = document.createElement('script')
-      script.id = 'hola-spark-player-script'
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/hola_player/1.1.4/hola_player.js'
-      script.async = true
-      script.crossOrigin = 'anonymous'
-    }
-
-    const onLoad = () => {
-      if (typeof window.hola_player === 'function') {
-        script.dataset.loaded = 'true'
-        resolve()
-      } else {
-        script.dataset.failed = 'true'
-        reject(new Error('Hola Spark 脚本已下载，但没有导出 hola_player()'))
-      }
-    }
-    const onError = () => {
-      script.dataset.failed = 'true'
-      reject(new Error('无法下载 https://cdnjs.cloudflare.com/ajax/libs/hola_player/1.1.4/hola_player.js'))
-    }
-
-    script.addEventListener('load', onLoad, { once: true })
-    script.addEventListener('error', onError, { once: true })
-    if (isNew) document.head.appendChild(script)
-    else if (script.dataset.loaded === 'true') onLoad()
-  }).catch(error => {
-    sparkPromise = null
-    throw error
+  player = new Plyr(video, {
+    controls: [
+      'play-large', 'play', 'progress', 'current-time', 'duration',
+      'mute', 'volume', 'settings', 'pip', 'fullscreen'
+    ],
+    settings: ['speed'],
+    speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
+    tooltips: { controls: true, seek: true },
+    keyboard: { focused: true, global: false },
+    invertTime: false,
+    clickToPlay: true,
+    hideControls: true,
+    resetOnEnd: false
   })
 
-  return sparkPromise
+  video.addEventListener('ratechange', () => {
+    // A user may intentionally choose a different rate in the Plyr speed menu.
+    // Keep pitch correction enabled; only reset non-finite/invalid rates.
+    if (!Number.isFinite(video.playbackRate) || video.playbackRate <= 0) {
+      setNormalAudio(video)
+    }
+  })
+
+  return player
+}
+
+function destroyHls() {
+  if (hls) {
+    try { hls.destroy() } catch (_) {}
+    hls = null
+  }
+}
+
+function clearMedia(video) {
+  destroyHls()
+  if (!video) return
+  try { video.pause() } catch (_) {}
+  video.removeAttribute('src')
+  while (video.firstChild) video.removeChild(video.firstChild)
+  video.load()
 }
 
 function onVideoError() {
-  const video = videoEl.value
-  const code = video?.error?.code
+  const code = videoEl.value?.error?.code
   const reasons = {
     1: '视频加载被中断',
-    2: '网络错误：播放地址不可访问或上游服务器中断',
-    3: '解码失败：视频编码或封装格式不受浏览器支持',
+    2: '网络错误：播放地址不可访问、跨域限制或上游服务器中断',
+    3: '解码失败：请检查视频或音频编码是否受支持',
     4: '视频格式或 MIME 类型不受支持'
   }
-  playerError.value = reasons[code] || '视频加载失败，请检查播放地址、跨域响应和视频格式'
+  playerError.value = reasons[code] || '视频加载失败，请检查播放地址、CORS 和媒体编码'
 }
 
-async function initializePlayer() {
+function configureHls(video, url) {
+  if (Hls.isSupported()) {
+    hls = new Hls({
+      enableWorker: true,
+      lowLatencyMode: false,
+      capLevelToPlayerSize: true,
+      backBufferLength: 30,
+      maxBufferLength: 30,
+      maxMaxBufferLength: 60,
+      startLevel: -1
+    })
+
+    hls.on(Hls.Events.ERROR, (_event, data) => {
+      if (!data?.fatal) return
+
+      if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+        playerError.value = 'HLS 网络错误，正在尝试恢复播放…'
+        hls?.startLoad()
+      } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+        playerError.value = 'HLS 媒体解码异常，正在尝试恢复…'
+        hls?.recoverMediaError()
+      } else {
+        playerError.value = data.details
+          ? `HLS 播放失败：${data.details}`
+          : 'HLS 播放失败，请检查视频源'
+        destroyHls()
+      }
+    })
+
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      playerError.value = ''
+      setNormalAudio(video)
+    })
+
+    hls.loadSource(url)
+    hls.attachMedia(video)
+    return
+  }
+
+  // Safari/iOS and other browsers can use their built-in HLS implementation.
+  if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = url
+    video.load()
+    setNormalAudio(video)
+    return
+  }
+
+  throw new Error('当前浏览器不支持 HLS（缺少 MediaSource 或原生 HLS 支持）')
+}
+
+async function initializePlayer({ autoplay = false } = {}) {
   await nextTick()
   const video = videoEl.value
   const episode = activeEpisode.value
@@ -151,94 +204,57 @@ async function initializePlayer() {
   playerError.value = ''
   video.removeEventListener('error', onVideoError)
   video.addEventListener('error', onVideoError)
+  ensurePlayer(video)
+  clearMedia(video)
+  setNormalAudio(video)
 
-  // Hola Player 1.1.4 supports both progressive media and HLS/M3U8.
   try {
-    const existingPlayer = getSparkInstance()
-    if (existingPlayer) {
-      existingPlayer.src({ src: episode.url, type: mediaType(episode.url) })
-      existingPlayer.load()
-      existingPlayer.on?.('error', () => {
-        const error = existingPlayer.error?.()
-        playerError.value = error?.message || 'Hola Spark 播放器无法读取该视频地址'
-      })
-      return
+    if (isHlsUrl(episode.url)) {
+      configureHls(video, episode.url)
+    } else {
+      video.src = episode.url
+      video.load()
     }
 
-    video.load()
-    await loadSparkPlayer()
-    if (!sparkInitialized) {
-      window.hola_player()
-      sparkInitialized = true
-    }
-
-    const player = getSparkInstance()
-    if (player) {
-      player.ready(() => {
-        player.src({ src: episode.url, type: mediaType(episode.url) })
-        player.load()
-        player.on?.('error', () => {
-          const error = player.error?.()
-          playerError.value = error?.message || 'Hola Spark 播放器无法读取该视频地址'
+    if (autoplay) {
+      const startPlayback = () => {
+        setNormalAudio(video)
+        const result = video.play()
+        if (result?.catch) result.catch(() => {
+          playerError.value = '视频已加载，请点击播放器中的播放按钮开始播放'
         })
-      })
+      }
+      if (video.readyState >= 2) startPlayback()
+      else video.addEventListener('canplay', startPlayback, { once: true })
     }
   } catch (error) {
-    // Do not make Spark's script a single point of failure: the native HTML5
-    // video element still has its source and controls, so it can play directly.
-    playerError.value = `Hola Spark 初始化失败（${error.message}），已保留浏览器原生播放器作为备用。`
+    playerError.value = `播放器初始化失败：${error.message}`
   }
 }
 
 async function selectEpisode(index) {
   if (!activeSource.value?.episodes[index]) return
   episodeIndex.value = index
-  await nextTick()
-  const video = videoEl.value
-  const episode = activeEpisode.value
-  if (!video || !episode) return
-
-  playerError.value = ''
-  try {
-    const player = getSparkInstance()
-    if (player) {
-      player.src({ src: episode.url, type: mediaType(episode.url) })
-      player.load()
-      const result = player.play()
-      if (result?.catch) result.catch(() => {
-        playerError.value = '已切换选集，请点击播放器中的播放按钮开始播放'
-      })
-    } else {
-      video.load()
-      const result = video.play()
-      if (result?.catch) result.catch(() => {
-        playerError.value = '已切换选集，请点击播放器中的播放按钮开始播放'
-      })
-    }
-    saveHistory(item.value, episode)
-  } catch (error) {
-    playerError.value = `切换选集失败：${error.message}`
-  }
+  await initializePlayer({ autoplay: true })
+  if (activeEpisode.value) saveHistory(item.value, activeEpisode.value)
 }
 
 function resetPlayback() {
-  const player = getSparkInstance()
-  if (player && !player.isDisposed?.()) {
-    try { player.pause() } catch (_) {}
-  }
-  if (videoEl.value) {
-    videoEl.value.removeEventListener('error', onVideoError)
-  }
+  const video = videoEl.value
+  if (video) clearMedia(video)
 }
 
 function cleanup() {
-  const player = getSparkInstance()
-  if (player && !player.isDisposed?.()) {
-    try { player.pause() } catch (_) {}
-    try { player.dispose() } catch (_) {}
+  const video = videoEl.value
+  destroyHls()
+  if (video) {
+    video.removeEventListener('error', onVideoError)
+    try { video.pause() } catch (_) {}
   }
-  sparkInitialized = false
-  if (videoEl.value) videoEl.value.removeEventListener('error', onVideoError)
+  if (player) {
+    try { player.destroy() } catch (_) {}
+    player = null
+  }
 }
 
 async function load() {

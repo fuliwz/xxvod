@@ -78,6 +78,14 @@ export async function getVideos({ page = 1, limit = 20, typeId = '', keyword = '
 
 export const getLatestVideos = (page = 1, limit = VIDEO_PAGE_SIZE) => getVideos({ page, limit, sort: 'time' })
 export const getHotVideos = (page = 1, limit = VIDEO_PAGE_SIZE) => getVideos({ page, limit, sort: 'hits' })
+
+// Select one random page from the hot-video result set for homepage discovery.
+export async function getRandomHotVideos(limit = VIDEO_PAGE_SIZE) {
+  const firstPage = await getHotVideos(1, limit)
+  const pageCount = Math.max(1, int(firstPage.pageCount, 1))
+  const randomPage = Math.floor(Math.random() * pageCount) + 1
+  return randomPage === 1 ? firstPage : getHotVideos(randomPage, limit)
+}
 export const getScoreVideos = (page = 1, limit = VIDEO_PAGE_SIZE) => getVideos({ page, limit, sort: 'score' })
 export const getCategoryVideos = (typeId, page = 1, limit = 20) => getVideos({ typeId, page, limit })
 export const searchVideos = (keyword, page = 1, limit = 20) => getVideos({ keyword, page, limit })
