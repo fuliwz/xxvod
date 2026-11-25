@@ -50,6 +50,25 @@ location / {
 
 前端按 JSON 对象读取响应；若响应包含 `code`，当前客户端将 `1` 或 `200` 视为成功，并优先返回 `data` 字段。需确保 PHP API 与此约定一致。
 
+## API 响应加密（可选）
+
+PHP 后端启用 `api_encrypt.php` 的 AES-256-GCM 响应加密后，前端会在 Axios 响应拦截器中自动解密，原有页面和 API 调用无需修改。客户端兼容未加密响应，因此可以先部署前端，再启用后端加密。
+
+构建环境需要设置：
+
+- `VITE_API_ENCRYPTION_SECRET`：必须与 VPS `api_encrypt.php` 中的 `$secret` 字符串完全一致。
+- `VITE_API_BASE_URL`：可选，API 地址；不设置时使用代码中的默认地址。
+
+本地开发可在项目根目录创建不提交到 Git 的 `.env.local`：
+
+```dotenv
+VITE_API_ENCRYPTION_SECRET=替换为与VPS完全一致的密钥字符串
+```
+
+Cloudflare Pages 请在项目的 Settings → Environment variables 中添加 `VITE_API_ENCRYPTION_SECRET`，然后重新部署。生产环境和 Preview 环境如需分别构建，都要配置对应变量。
+
+**安全说明：** Vite 的 `VITE_*` 变量会被编译进浏览器 JavaScript，访问者仍可能提取密钥并解密数据。本功能主要让 Network 面板中的响应不再直接显示明文 JSON，属于基础混淆，不是防逆向或真正的客户端密钥保护。不要把实际密钥提交到 GitHub。
+
 ## 资源
 
 Font Awesome 与 Orbitron、Bebas Neue、Inter 字体使用固定版本的 Cloudflare cdnjs 地址；不调用 Google Fonts 或 gstatic。中文字体回退至系统字体。
