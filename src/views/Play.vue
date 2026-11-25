@@ -7,7 +7,7 @@
           <div class="cf-player-shell">
             <div class="cf-player-bar"><span><i class="fa-solid fa-circle-play"></i> 正在播放</span><span>视频播放器</span></div>
             <div class="cf-player-box">
-              <video id="xxvod-player" ref="videoEl" class="xxvod-player" :poster="item.poster || undefined" playsinline webkit-playsinline controls crossorigin="anonymous" preload="metadata"></video>
+              <video id="xxvod-player" ref="videoEl" class="xxvod-player" :poster="item.poster || undefined" playsinline webkit-playsinline controls preload="metadata"></video>
             </div>
           </div>
           <section class="cf-detail-panel">
@@ -97,7 +97,7 @@ function ensurePlayer(video) {
       'play-large', 'play', 'progress', 'current-time', 'duration',
       'mute', 'volume', 'settings', 'pip', 'fullscreen'
     ],
-    settings: ['quality', 'speed'],
+    settings: ['speed'],
     speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
     tooltips: { controls: true, seek: true },
     keyboard: { focused: true, global: false },
