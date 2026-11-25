@@ -2,6 +2,8 @@ import { apiGet } from './http'
 
 let configPromise
 let configCache
+let categoriesPromise
+let categoriesCache
 let adsPromise
 let linksPromise
 let tagsPromise
@@ -38,8 +40,7 @@ function collectCategories(payload) {
   return []
 }
 
-export const getCategories = async () => {
-  const payload = await apiGet({ action: 'categories' })
+function normalizeCategories(payload) {
   const source = collectCategories(payload)
   const output = []
   const seen = new Set()
@@ -61,7 +62,39 @@ export const getCategories = async () => {
   return output
 }
 
+// Share one in-flight request and its result between startup preloading and views.
+export function getCategories(force = false) {
+  if (force) {
+    categoriesPromise = null
+    categoriesCache = null
+  }
+  if (categoriesCache) return Promise.resolve(categoriesCache)
+  if (!categoriesPromise) {
+    categoriesPromise = apiGet({ action: 'categories' })
+      .then(normalizeCategories)
+      .then(data => {
+        categoriesCache = data
+        return categoriesCache
+      })
+      .catch(error => {
+        categoriesPromise = null
+        throw error
+      })
+  }
+  return categoriesPromise
+}
+
 export const getFriendlyLinks = () => linksPromise || (linksPromise = apiGet({ action: 'links' }).catch(error => { linksPromise = null; throw error }))
 export const getAds = () => adsPromise || (adsPromise = apiGet({ action: 'ads' }).catch(error => { adsPromise = null; throw error }))
 export const getStats = () => apiGet({ action: 'stats' })
 export const getHotTags = () => tagsPromise || (tagsPromise = apiGet({ action: 'tags' }).catch(error => { tagsPromise = null; throw error }))
+
+// Warm up data used by the global layout. Views/components reuse these promises.
+export function preloadSiteData() {
+  return Promise.allSettled([
+    getSiteConfig(),
+    getCategories(),
+    getFriendlyLinks(),
+    getAds()
+  ])
+}
