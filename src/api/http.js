@@ -1,7 +1,11 @@
 import axios from 'axios'
 
+// The frontend is hosted on Cloudflare Pages while the PHP API runs on the VPS.
+// Keep the API host absolute so requests never fall back to xxvod.pages.dev/api.php.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://mac.91aix.cfd/api.php'
+
 const http = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api.php',
+  baseURL: API_BASE_URL,
   timeout: 20000,
   paramsSerializer: { indexes: null },
   headers: { Accept: 'application/json' }
