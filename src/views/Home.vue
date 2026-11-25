@@ -22,8 +22,11 @@
     </section>
     <section class="cf-section">
       <header class="cf-sec-head"><div><span class="cf-eyebrow pink">BROWSE BY GENRE</span><h2 class="cf-h2">视频分类 <span class="cf-grad-text-hot">CATEGORIES</span></h2></div><router-link to="/categories" class="cf-see-all">全部分类 <i class="fa-solid fa-arrow-right"></i></router-link></header>
+      <div v-if="childCategories.length" class="cf-chip-row cf-category-tabs">
+        <router-link v-for="cat in childCategories" :key="cat.type_id" :to="`/category/${cat.type_id}`" class="cf-chip"><span class="cf-chip-dot"></span>{{ cat.type_name }}</router-link>
+      </div>
       <div class="cf-category-grid">
-        <router-link v-for="cat in categories.slice(0, 16)" :key="cat.type_id" :to="`/category/${cat.type_id}`" class="cf-category-card"><span class="cf-cat-icon"><i class="fa-solid fa-clapperboard"></i></span><strong>{{ cat.type_name }}</strong><i class="fa-solid fa-arrow-up-right-from-square cf-cat-arrow"></i></router-link>
+        <router-link v-for="cat in rootCategories.slice(0, 16)" :key="cat.type_id" :to="`/category/${cat.type_id}`" class="cf-category-card"><span class="cf-cat-icon"><i class="fa-solid fa-clapperboard"></i></span><strong>{{ cat.type_name }}</strong><i class="fa-solid fa-arrow-up-right-from-square cf-cat-arrow"></i></router-link>
       </div>
     </section>
     <section v-if="tags.length" class="cf-section">
@@ -33,13 +36,15 @@
   </section>
 </template>
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { getHotVideos, getLatestVideos, getScoreVideos } from '../api/vod'
 import { getCategories, getHotTags } from '../api/site'
 import VideoGrid from '../components/VideoGrid.vue'
 const popular = ref([])
 const latest = ref([])
 const categories = ref([])
+const rootCategories = computed(() => categories.value.filter(item => Number(item.type_pid || 0) === 0))
+const childCategories = computed(() => categories.value.filter(item => Number(item.type_pid || 0) !== 0))
 const tags = ref([])
 const loading = ref(true)
 const tabs = [{key:'time',label:'最新发布'},{key:'hits',label:'最多播放'},{key:'score',label:'高分内容'}]
@@ -52,7 +57,7 @@ async function load() {
     ])
     popular.value = hot.list
     latest.value = fresh.list
-    categories.value = Array.isArray(cats) ? cats.filter(x => Number(x.type_pid || 0) === 0) : []
+    categories.value = Array.isArray(cats) ? cats.filter(item => item && item.type_id != null) : []
     tags.value = Array.isArray(hotTags) ? hotTags : []
   } catch (_) {
     popular.value = []; latest.value = []
