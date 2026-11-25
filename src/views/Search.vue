@@ -14,7 +14,7 @@ import Pagination from '../components/Pagination.vue'
 const route = useRoute()
 const router = useRouter()
 const videos = ref([])
-const loading = ref(false)
+const loading = ref(Boolean(String(route.query.wd || '').trim()))
 const page = ref(1)
 const pageCount = ref(1)
 const keyword = computed(() => String(route.query.wd || '').trim().slice(0, 100))
