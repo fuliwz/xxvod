@@ -35,6 +35,11 @@
             <router-link v-for="child in childrenFor(cat)" :key="child.type_id" class="cf-sb-subcategory" :to="`/category/${child.type_id}`" active-class="active" @click="mobileOpen = false">{{ child.type_name }}</router-link>
           </div>
         </div>
+        <div v-if="hotTags.length" class="cf-sb-divider"></div>
+        <div v-if="hotTags.length" class="cf-sb-section-label">HOT TAGS</div>
+        <router-link v-for="tag in hotTags" :key="tag.keyword" class="cf-sb-tag" :to="{ path: '/search', query: { wd: tag.keyword } }" @click="mobileOpen = false">
+          <i class="fa-solid fa-hashtag"></i><span class="cf-sb-label">{{ tag.name }}</span>
+        </router-link>
         <div class="cf-sb-divider"></div>
         <router-link class="cf-sb-item" to="/history" active-class="active" @click="mobileOpen = false"><span class="cf-sb-icon"><i class="fa-regular fa-clock"></i></span><span class="cf-sb-label">观看记录</span></router-link>
       </div>
@@ -62,6 +67,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useSite } from './composables/useSite'
+import hotTagsConfig from './config/hot-tags.json'
 import AdSlot from './components/AdSlot.vue'
 import FriendlyLinks from './components/FriendlyLinks.vue'
 import SiteStats from './components/SiteStats.vue'
@@ -73,6 +79,7 @@ const collapsed = ref(false)
 const mobileOpen = ref(false)
 const mobileSearch = ref(false)
 const expandedCategories = ref([])
+const hotTags = hotTagsConfig.filter(tag => tag && tag.name && tag.keyword)
 const categoryChildren = computed(() => categories.value.filter(item => Number(item.type_pid || 0) !== 0))
 function childrenFor(category) {
   return categoryChildren.value.filter(item => String(item.type_pid) === String(category.type_id))
