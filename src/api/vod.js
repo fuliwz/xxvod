@@ -77,6 +77,7 @@ export async function getVideos({ page = 1, limit = 20, typeId = '', keyword = '
 
 export const getLatestVideos = (page = 1, limit = 20) => getVideos({ page, limit, sort: 'time' })
 export const getHotVideos = (page = 1, limit = 20) => getVideos({ page, limit, sort: 'hits' })
+export const getScoreVideos = (page = 1, limit = 20) => getVideos({ page, limit, sort: 'score' })
 export const getCategoryVideos = (typeId, page = 1, limit = 20) => getVideos({ typeId, page, limit })
 export const searchVideos = (keyword, page = 1, limit = 20) => getVideos({ keyword, page, limit })
 
