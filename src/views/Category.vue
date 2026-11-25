@@ -1,8 +1,8 @@
 <template>
   <section class="cf-page cf-list-page">
     <header class="cf-page-title"><div><span class="cf-eyebrow">{{ latest ? 'FRESH CONTENT' : popular ? 'MOST VIEWED' : 'EXPLORE LIBRARY' }}</span><h1 class="cf-h2">{{ title }}</h1><p>发现更多精彩内容</p></div></header>
-    <div v-if="!latest && !popular && categories.length" class="cf-chip-row cf-category-tabs">
-      <router-link v-for="cat in categories" :key="cat.type_id" :to="`/category/${cat.type_id}`" class="cf-chip" :class="{ active: String(cat.type_id) === String(route.params.id) }">{{ cat.type_name }}</router-link>
+    <div v-if="!latest && !popular && childCategories.length" class="cf-chip-row cf-category-tabs">
+      <router-link v-for="cat in childCategories" :key="cat.type_id" :to="`/category/${cat.type_id}`" class="cf-chip" :class="{ active: String(cat.type_id) === String(route.params.id) }"><span class="cf-chip-dot"></span>{{ cat.type_name }}</router-link>
     </div>
     <VideoGrid :items="videos" :loading="loading" />
     <Pagination :current="page" :pages="pageCount" @change="go" />
@@ -24,7 +24,16 @@ const page = ref(1)
 const pageCount = ref(1)
 const loading = ref(true)
 let token = 0
-const title = computed(() => props.latest ? '最新更新' : props.popular ? '热门推荐' : categories.value.find(c => String(c.type_id) === String(route.params.id))?.type_name || '视频分类')
+const currentCategory = computed(() => categories.value.find(c => String(c.type_id) === String(route.params.id)) || null)
+const currentRoot = computed(() => {
+  if (!currentCategory.value) return null
+  if (Number(currentCategory.value.type_pid || 0) === 0) return currentCategory.value
+  return categories.value.find(c => String(c.type_id) === String(currentCategory.value.type_pid)) || null
+})
+const childCategories = computed(() => currentRoot.value
+  ? categories.value.filter(c => String(c.type_pid || 0) === String(currentRoot.value.type_id))
+  : [])
+const title = computed(() => props.latest ? '最新更新' : props.popular ? '热门推荐' : currentCategory.value?.type_name || '视频分类')
 async function load() {
   const current = ++token
   const n = Number(route.query.pg)
@@ -32,7 +41,7 @@ async function load() {
   loading.value = true
   try {
     const [cats] = await Promise.all([getCategories()])
-    categories.value = Array.isArray(cats) ? cats.filter(c => Number(c.type_pid || 0) === 0) : []
+    categories.value = Array.isArray(cats) ? cats.filter(c => c && c.type_id != null) : []
     const result = props.latest ? await getLatestVideos(page.value, 24) : props.popular ? await getHotVideos(page.value, 24) : await getCategoryVideos(route.params.id, page.value, 24)
     if (current !== token) return
     videos.value = result.list
