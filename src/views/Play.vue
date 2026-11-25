@@ -99,8 +99,7 @@ function loadSparkPlayer() {
     if (!script) {
       script = document.createElement('script')
       script.id = 'hola-spark-player-script'
-      const customerId = String(import.meta.env.VITE_HOLASPARK_CUSTOMER_ID || '').trim()
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/hola_player/1.1.4/hola_player.js
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/hola_player/1.1.4/hola_player.js'
       script.async = true
       script.crossOrigin = 'anonymous'
     }
