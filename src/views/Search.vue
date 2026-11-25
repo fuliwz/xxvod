@@ -1,6 +1,6 @@
 <template>
   <section class="cf-page cf-list-page">
-    <header class="cf-page-title"><div><span class="cf-eyebrow">SEARCH RESULTS</span><h1 class="cf-h2">搜索结果</h1><p v-if="keyword">关键词：{{ keyword }}</p></div></header>
+    <header class="cf-page-title"><div><h1 class="cf-h2">搜索结果</h1><p v-if="keyword">关键词：{{ keyword }}</p></div></header>
     <VideoGrid :items="videos" :loading="loading" />
     <Pagination :current="page" :pages="pageCount" @change="go" />
   </section>

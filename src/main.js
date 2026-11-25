@@ -7,6 +7,7 @@ import Category from './views/Category.vue'
 import Search from './views/Search.vue'
 import Play from './views/Play.vue'
 import History from './views/History.vue'
+import HotTags from './views/HotTags.vue'
 import NotFound from './views/NotFound.vue'
 import './styles/theme.css'
 import './styles/site.css'
@@ -16,6 +17,7 @@ const router = createRouter({
   routes: [
     { path: '/', component: Home },
     { path: '/categories', component: Categories },
+    { path: '/tags', component: HotTags },
     { path: '/category/:id', component: Category },
     { path: '/latest', component: Category, props: { latest: true } },
     { path: '/popular', component: Category, props: { popular: true } },

@@ -5,7 +5,7 @@
       <div class="cf-play-layout">
         <div class="cf-play-main">
           <div class="cf-player-shell">
-            <div class="cf-player-bar"><span><i class="fa-solid fa-circle-play"></i> NOW PLAYING</span><span>HOLA SPARK PLAYER</span></div>
+            <div class="cf-player-bar"><span><i class="fa-solid fa-circle-play"></i> 正在播放</span><span>视频播放器</span></div>
             <div class="cf-player-box">
               <video id="xxvod-hola-player" ref="videoEl" class="video-js vjs-default-skin" :poster="item.poster || undefined" playsinline webkit-playsinline controls preload="metadata">
                 <source v-if="activeEpisode" :key="episodeIndex" :src="activeEpisode.url" :type="mediaType(activeEpisode.url)" />
@@ -13,7 +13,7 @@
             </div>
           </div>
           <section class="cf-detail-panel">
-            <div class="cf-detail-head"><div><span class="cf-eyebrow pink">VIDEO DETAIL</span><h1>{{ item.title }}</h1></div><button class="cf-share" @click="share"><i class="fa-solid fa-share-nodes"></i> 分享</button></div>
+            <div class="cf-detail-head"><div><h1>{{ item.title }}</h1></div><button class="cf-share" @click="share"><i class="fa-solid fa-share-nodes"></i> 分享</button></div>
             <div class="cf-detail-meta"><span><i class="fa-regular fa-eye"></i> {{ formatViews(item.views) }} 次播放</span><span v-if="item.typeName"><i class="fa-solid fa-layer-group"></i> {{ item.typeName }}</span><span v-if="item.updateTime"><i class="fa-regular fa-calendar"></i> {{ item.updateTime }}</span><span v-if="item.score"><i class="fa-solid fa-star"></i> {{ item.score }}</span></div>
             <p v-if="item.content" class="cf-description">{{ item.content }}</p>
           </section>
@@ -26,14 +26,14 @@
           <div v-else class="cf-player-error">当前视频没有解析出线路一的有效播放地址，请检查后端返回的 vod_play_from / vod_play_url。</div>
         </div>
         <aside class="cf-play-side">
-          <header class="cf-sec-head"><div><span class="cf-eyebrow">UP NEXT</span><h2 class="cf-h3">相关推荐</h2></div></header>
+          <header class="cf-sec-head"><div><h2 class="cf-h3">相关推荐</h2></div></header>
           <router-link v-for="video in related.slice(0,8)" :key="video.id" :to="`/play/${video.id}`" class="cf-side-video">
             <img :src="video.poster || '/fallback.svg'" :alt="video.title" loading="lazy"/>
             <span><strong>{{ video.title }}</strong><small>{{ formatViews(video.views) }} 次播放</small></span>
           </router-link>
         </aside>
       </div>
-      <section v-if="related.length" class="cf-section cf-related-section"><header class="cf-sec-head"><div><span class="cf-eyebrow pink">YOU MAY ALSO LIKE</span><h2 class="cf-h2">猜你喜欢</h2></div></header><VideoGrid :items="related" /></section>
+      <section v-if="related.length" class="cf-section cf-related-section"><header class="cf-sec-head"><div><h2 class="cf-h2">猜你喜欢</h2></div></header><VideoGrid :items="related" /></section>
     </template>
     <div v-else class="cf-empty"><i class="fa-regular fa-circle-xmark"></i><span>暂时无法获取视频内容</span></div>
   </section>

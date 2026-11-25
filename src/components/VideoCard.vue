@@ -2,8 +2,8 @@
   <router-link :to="`/play/${item.id}`" class="cf-video-card">
     <div class="cf-video-thumb">
       <img :src="cover" :alt="item.title" loading="lazy" decoding="async" @error="failed = true" />
-      <span v-if="item.remarks || item.updateTime" class="cf-video-badge">{{ item.remarks || item.updateTime }}</span>
-      <span class="cf-video-duration">{{ item.duration || 'HD' }}</span>
+      <span class="cf-video-badge">HD</span>
+      <span v-if="item.duration" class="cf-video-duration">{{ item.duration }}</span>
       <span class="cf-video-play"><i class="fa-solid fa-play"></i></span>
       <span class="cf-video-bottom"><span><i class="fa-regular fa-eye"></i> {{ formatViews(item.views) }}</span><span>{{ item.year }}</span></span>
     </div>
