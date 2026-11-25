@@ -1,6 +1,6 @@
 <template>
   <section class="cf-page cf-list-page">
-    <header class="cf-page-title"><div><span class="cf-eyebrow"></span><h1 class="cf-h2">观看记录</h1><p>记录保存在当前浏览器</p></div><button v-if="items.length" class="cf-btn ghost" @click="clear">清空记录</button></header>
+    <header class="cf-page-title"><div><h1 class="cf-h2">观看记录</h1><p>记录保存在当前浏览器</p></div><button v-if="items.length" class="cf-btn ghost" @click="clear">清空记录</button></header>
     <div class="cf-video-grid">
       <router-link v-for="item in items" :key="item.id" :to="`/play/${item.id}`" class="cf-video-card">
         <div class="cf-video-thumb"><img :src="item.poster || '/fallback.svg'" :alt="item.title" loading="lazy"/><span class="cf-video-badge">{{ item.episode || '继续观看' }}</span></div>
