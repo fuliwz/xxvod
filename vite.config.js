@@ -22,8 +22,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'vue-core': ['vue', 'vue-router'],
-          'player-core': ['plyr', 'hls.js']
+          'vue-core': ['vue', 'vue-router']
         }
       }
     }
