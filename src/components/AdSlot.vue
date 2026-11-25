@@ -3,7 +3,7 @@
     <a v-for="ad in items" :key="ad.id || ad.url" :href="ad.url || '#'" target="_blank" rel="noopener noreferrer sponsored" class="cf-ad-item">
       <img v-if="ad.image" :src="ad.image" :alt="ad.title || '推广'" loading="lazy" />
       <span class="cf-ad-copy"><strong>{{ ad.title || '推广' }}</strong><small>{{ ad.description || '' }}</small></span>
-      <span class="cf-ad-label">AD</span>
+      <span class="cf-ad-label">广告</span>
     </a>
     <div v-if="html" ref="htmlRoot" class="cf-ad-custom"></div>
   </section>
