@@ -5,7 +5,7 @@
       <router-link class="cf-logo" to="/">
         <img v-if="config.logo" class="cf-site-logo" :src="config.logo" :alt="config.name || 'XXVOD'" />
         <span v-else class="cf-mark"><i class="fa-solid fa-play"></i></span>
-        <span class="cf-word-block"><span class="cf-word">{{ config.name || 'XXVOD' }}</span><span class="cf-sub">VIDEO NETWORK</span></span>
+        <span class="cf-word-block"><span class="cf-word">{{ config.name || 'XXVOD' }}</span></span>
       </router-link>
       <form class="cf-topbar-search" @submit.prevent="search"><i class="fa-solid fa-magnifying-glass"></i><input v-model="keyword" placeholder="搜索视频、分类或标签..." autocomplete="off" maxlength="100" /></form>
       <nav class="cf-topbar-nav"><router-link to="/" exact-active-class="active">首页</router-link><router-link to="/latest" active-class="active">最新</router-link><router-link to="/popular" active-class="active">热门</router-link></nav>
@@ -15,13 +15,14 @@
     <div v-if="mobileOpen" class="cf-mobile-scrim" @click="mobileOpen = false"></div>
     <aside class="cf-sidebar" :class="{ open: mobileOpen }">
       <div class="cf-sb-inner">
-        <div class="cf-sb-section-label">DISCOVER</div>
+        <div class="cf-sb-section-label">发现</div>
         <router-link class="cf-sb-item" to="/" exact-active-class="active" @click="mobileOpen = false"><span class="cf-sb-icon"><i class="fa-solid fa-house"></i></span><span class="cf-sb-label">首页</span></router-link>
         <router-link class="cf-sb-item" to="/latest" active-class="active" @click="mobileOpen = false"><span class="cf-sb-icon"><i class="fa-solid fa-clock"></i></span><span class="cf-sb-label">最新更新</span></router-link>
         <router-link class="cf-sb-item" to="/popular" active-class="active" @click="mobileOpen = false"><span class="cf-sb-icon"><i class="fa-solid fa-fire"></i></span><span class="cf-sb-label">热门推荐</span></router-link>
         <router-link class="cf-sb-item" to="/categories" active-class="active" @click="mobileOpen = false"><span class="cf-sb-icon"><i class="fa-solid fa-layer-group"></i></span><span class="cf-sb-label">全部分类</span></router-link>
+        <router-link class="cf-sb-item" to="/tags" active-class="active" @click="mobileOpen = false"><span class="cf-sb-icon"><i class="fa-solid fa-hashtag"></i></span><span class="cf-sb-label">热门标签</span></router-link>
         <div class="cf-sb-divider"></div>
-        <div class="cf-sb-section-label">CATEGORIES</div>
+        <div class="cf-sb-section-label">视频分类</div>
         <div v-for="cat in rootCategories.slice(0,24)" :key="cat.type_id" class="cf-sb-category-group">
           <div class="cf-sb-category-parent">
             <router-link class="cf-sb-item cf-sb-category" :to="`/category/${cat.type_id}`" active-class="active" @click="mobileOpen = false">
@@ -35,15 +36,9 @@
             <router-link v-for="child in childrenFor(cat)" :key="child.type_id" class="cf-sb-subcategory" :to="`/category/${child.type_id}`" active-class="active" @click="mobileOpen = false">{{ child.type_name }}</router-link>
           </div>
         </div>
-        <div v-if="hotTags.length" class="cf-sb-divider"></div>
-        <div v-if="hotTags.length" class="cf-sb-section-label">HOT TAGS</div>
-        <router-link v-for="tag in hotTags" :key="tag.keyword" class="cf-sb-tag" :to="{ path: '/search', query: { wd: tag.keyword } }" @click="mobileOpen = false">
-          <i class="fa-solid fa-hashtag"></i><span class="cf-sb-label">{{ tag.name }}</span>
-        </router-link>
         <div class="cf-sb-divider"></div>
         <router-link class="cf-sb-item" to="/history" active-class="active" @click="mobileOpen = false"><span class="cf-sb-icon"><i class="fa-regular fa-clock"></i></span><span class="cf-sb-label">观看记录</span></router-link>
       </div>
-      <div class="cf-sb-footer">POWERED BY PHP + VUE</div>
     </aside>
 
     <button class="cf-sb-toggle" aria-label="折叠侧边栏" @click="collapsed = !collapsed"><i class="fa-solid fa-chevron-left"></i></button>
@@ -67,7 +62,6 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useSite } from './composables/useSite'
-import hotTagsConfig from './config/hot-tags.json'
 import AdSlot from './components/AdSlot.vue'
 import FriendlyLinks from './components/FriendlyLinks.vue'
 import SiteStats from './components/SiteStats.vue'
@@ -79,7 +73,6 @@ const collapsed = ref(false)
 const mobileOpen = ref(false)
 const mobileSearch = ref(false)
 const expandedCategories = ref([])
-const hotTags = hotTagsConfig.filter(tag => tag && tag.name && tag.keyword)
 const categoryChildren = computed(() => categories.value.filter(item => Number(item.type_pid || 0) !== 0))
 function childrenFor(category) {
   return categoryChildren.value.filter(item => String(item.type_pid) === String(category.type_id))
