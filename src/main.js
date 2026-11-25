@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import Home from './views/Home.vue'
+import Categories from './views/Categories.vue'
 import Category from './views/Category.vue'
 import Search from './views/Search.vue'
 import Play from './views/Play.vue'
@@ -15,7 +16,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', component: Home },
-    { path: '/categories', component: Category },
+    { path: '/categories', component: Categories },
     { path: '/category/:id', component: Category },
     { path: '/latest', component: Category, props: { latest: true } },
     { path: '/popular', component: Category, props: { popular: true } },
