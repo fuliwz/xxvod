@@ -9,8 +9,13 @@ import Play from './views/Play.vue'
 import History from './views/History.vue'
 import HotTags from './views/HotTags.vue'
 import NotFound from './views/NotFound.vue'
+import { preloadSiteData } from './api/site'
 import './styles/theme.css'
 import './styles/site.css'
+
+// Start global API requests immediately. The site modules deduplicate these
+// requests so mounted components reuse the same in-flight promises/results.
+void preloadSiteData()
 
 const router = createRouter({
   history: createWebHistory(),
