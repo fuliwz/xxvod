@@ -53,7 +53,7 @@ export const getCategories = async () => {
       const item = { ...raw, type_id: id, type_name: String(name), type_pid: parent }
       const key = String(id)
       if (!seen.has(key)) { seen.add(key); output.push(item) }
-      const nested = raw.children ?? raw.subcategories ?? raw.child ?? raw.sub ?? raw.childs
+      const nested = raw.children ?? raw.subcategories ?? raw.child ?? raw.sub ?? raw.childs ?? raw.type_children
       if (Array.isArray(nested)) visit(nested, id)
     }
   }
