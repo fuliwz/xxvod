@@ -5,8 +5,8 @@
       <div class="cf-play-layout">
         <div class="cf-play-main">
           <div class="cf-player-shell">
-            <div class="cf-player-bar"><span><i class="fa-solid fa-circle-play"></i> NOW PLAYING</span><span>HD PLAYER</span></div>
-            <div class="cf-player-box"><video ref="videoEl" playsinline controls preload="metadata"></video></div>
+            <div class="cf-player-bar"><span><i class="fa-solid fa-circle-play"></i> NOW PLAYING</span><span>HOLA SPARK PLAYER</span></div>
+            <div class="cf-player-box"><video id="xxvod-hola-player" ref="videoEl" class="video-js vjs-default-skin" playsinline controls preload="metadata"></video></div>
           </div>
           <section class="cf-detail-panel">
             <div class="cf-detail-head"><div><span class="cf-eyebrow pink">VIDEO DETAIL</span><h1>{{ item.title }}</h1></div><button class="cf-share" @click="share"><i class="fa-solid fa-share-nodes"></i> 分享</button></div>
@@ -14,11 +14,10 @@
             <p v-if="item.content" class="cf-description">{{ item.content }}</p>
           </section>
           <div v-if="playerError" class="cf-player-error">{{ playerError }}</div>
-          <section v-if="sources.length" class="cf-source-panel">
-            <header class="cf-panel-title"><h2>播放线路</h2><span>{{ sources.length }} 条线路</span></header>
-            <div class="cf-source-list"><button v-for="(source,i) in sources" :key="source.name" :class="{active:sourceIndex===i}" @click="selectSource(i)">{{ source.name }}</button></div>
-            <header class="cf-panel-title episode-title"><h2>选集</h2><span>{{ activeSource?.episodes.length || 0 }} 集</span></header>
-            <div class="cf-episodes"><button v-for="(ep,i) in activeSource?.episodes || []" :key="ep.label+i" :class="{active:episodeIndex===i}" @click="selectEpisode(i)">{{ ep.label }}</button></div>
+          <section v-if="activeSource" class="cf-source-panel">
+            <header class="cf-panel-title"><h2>播放线路</h2><span>线路一 · 固定使用</span></header>
+            <header class="cf-panel-title episode-title"><h2>选集</h2><span>{{ activeSource.episodes.length }} 集</span></header>
+            <div class="cf-episodes"><button v-for="(ep,i) in activeSource.episodes" :key="ep.label+i" :class="{active:episodeIndex===i}" @click="selectEpisode(i)">{{ ep.label }}</button></div>
           </section>
         </div>
         <aside class="cf-play-side">
@@ -46,78 +45,120 @@ const related = ref([])
 const loading = ref(true)
 const playerError = ref('')
 const videoEl = ref(null)
-const sourceIndex = ref(0)
 const episodeIndex = ref(0)
-let player = null
-let hls = null
+let sparkPromise = null
 let token = 0
-let PlyrClass = null
-let HlsClass = null
-let librariesPromise = null
-const sources = computed(() => parsePlaySources(item.value))
-const activeSource = computed(() => sources.value[sourceIndex.value] || null)
+// The site deliberately uses only the first upstream play source (线路一).
+const sources = computed(() => parsePlaySources(item.value).slice(0, 1))
+const activeSource = computed(() => sources.value[0] || null)
 const activeEpisode = computed(() => activeSource.value?.episodes[episodeIndex.value] || null)
-function formatViews(value) { const n=Number(value)||0; return n>=1e6 ? (n/1e6).toFixed(1)+'M' : n>=1000 ? (n/1e3).toFixed(1)+'K' : String(n) }
-function cleanup() { if(hls){hls.destroy();hls=null} if(player){player.destroy();player=null} }
-async function loadLibraries() {
-  if (!librariesPromise) librariesPromise = Promise.all([import('plyr'), import('hls.js')]).then(([p,h]) => {
-    PlyrClass = p.default || p
-    HlsClass = h.default || h
-    return true
-  }).catch(error => { librariesPromise = null; throw error })
-  return librariesPromise
+
+function formatViews(value) {
+  const n = Number(value) || 0
+  return n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1000 ? (n / 1e3).toFixed(1) + 'K' : String(n)
 }
+
+function sparkInstance() {
+  return window.videojs?.getPlayer?.('xxvod-hola-player') || null
+}
+
+function cleanup() {
+  const instance = sparkInstance()
+  if (instance && !instance.isDisposed?.()) instance.dispose()
+}
+
+function loadSparkPlayer() {
+  if (typeof window.hola_player === 'function') return Promise.resolve()
+  if (sparkPromise) return sparkPromise
+  sparkPromise = new Promise((resolve, reject) => {
+    let script = document.getElementById('hola-spark-player-script')
+    if (!script) {
+      script = document.createElement('script')
+      script.id = 'hola-spark-player-script'
+      script.src = 'https://player2.h-cdn.com/hola_player.js'
+      script.async = true
+      document.head.appendChild(script)
+    }
+    script.addEventListener('load', () => {
+      if (typeof window.hola_player === 'function') resolve()
+      else reject(new Error('Hola Spark Player 初始化接口不可用'))
+    }, { once: true })
+    script.addEventListener('error', () => reject(new Error('Hola Spark Player 脚本加载失败')), { once: true })
+  }).catch(error => {
+    sparkPromise = null
+    throw error
+  })
+  return sparkPromise
+}
+
+function mediaType(url) {
+  if (/\.m3u8(?:$|\?)/i.test(url)) return 'application/x-mpegURL'
+  if (/\.mpd(?:$|\?)/i.test(url)) return 'application/dash+xml'
+  if (/\.webm(?:$|\?)/i.test(url)) return 'video/webm'
+  return 'video/mp4'
+}
+
 async function playEpisode() {
   await nextTick()
-  if(!videoEl.value || !activeEpisode.value || !PlyrClass || !HlsClass) return
-  cleanup()
+  if (!videoEl.value || !activeEpisode.value) return
   const video = videoEl.value
   const url = activeEpisode.value.url
   playerError.value = ''
   try {
-    player = new PlyrClass(video,{controls:['play-large','play','progress','current-time','mute','volume','settings','pip','fullscreen'],settings:['speed'],ratio:'16:9'})
-    if(/\.m3u8(?:$|\?)/i.test(url) && HlsClass.isSupported()) {
-      hls = new HlsClass({enableWorker:true,backBufferLength:60})
-      hls.on(HlsClass.Events.MANIFEST_PARSED,()=>player?.play().catch(()=>{}))
-      hls.on(HlsClass.Events.ERROR,(_event,data)=>{ if(data?.fatal) playerError.value='HLS 媒体加载失败，请切换线路或选集' })
-      hls.loadSource(url)
-      hls.attachMedia(video)
-    } else if (video.canPlayType('application/vnd.apple.mpegurl') || !/\.m3u8(?:$|\?)/i.test(url)) {
+    await loadSparkPlayer()
+    const current = sparkInstance()
+    if (current && !current.isDisposed?.()) {
+      current.src({ src: url, type: mediaType(url) })
+      current.load()
+      current.play().catch(() => {})
+    } else {
       video.src = url
       video.load()
-      player.play().catch(()=>{})
-    } else {
-      playerError.value='当前浏览器不支持 HLS 播放'
+      window.hola_player()
+      const created = sparkInstance()
+      if (created) created.ready(() => created.play().catch(() => {}))
     }
-    saveHistory(item.value,activeEpisode.value)
-  } catch (_) { playerError.value='播放器加载失败，请刷新后重试' }
+    saveHistory(item.value, activeEpisode.value)
+  } catch (_) {
+    playerError.value = 'Hola Spark Player 加载失败，请检查网络后刷新重试'
+  }
 }
-function selectSource(i){sourceIndex.value=i;episodeIndex.value=0;playEpisode()}
-function selectEpisode(i){episodeIndex.value=i;playEpisode()}
+
+function selectEpisode(index) {
+  episodeIndex.value = index
+  playEpisode()
+}
+
 async function load() {
-  const current=++token
-  cleanup(); item.value=null; related.value=[]; sourceIndex.value=0; episodeIndex.value=0; loading.value=true
+  const current = ++token
+  cleanup()
+  item.value = null
+  related.value = []
+  episodeIndex.value = 0
+  loading.value = true
   try {
-    const detail=await getDetail(route.params.id)
-    if(current!==token) return
-    item.value=detail
-    if(detail) {
-      related.value=await getRelatedVideos(detail,16).catch(()=>[])
-      document.title=`${detail.title} - XXVOD`
-      await loadLibraries()
-      if(current!==token) return
-      await nextTick()
-      if(activeEpisode.value) await playEpisode()
+    const detail = await getDetail(route.params.id)
+    if (current !== token) return
+    item.value = detail
+    if (detail) {
+      related.value = await getRelatedVideos(detail, 16).catch(() => [])
+      document.title = `${detail.title} - XXVOD`
+      if (activeEpisode.value) await playEpisode()
     }
-  } catch (_) { item.value=null }
-  finally { if(current===token) loading.value=false }
+  } catch (_) {
+    item.value = null
+  } finally {
+    if (current === token) loading.value = false
+  }
 }
-async function share(){
+
+async function share() {
   try {
-    if(navigator.share) await navigator.share({title:item.value?.title||document.title,url:location.href})
-    else if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(location.href);alert('链接已复制')}
+    if (navigator.share) await navigator.share({ title: item.value?.title || document.title, url: location.href })
+    else if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(location.href); alert('链接已复制') }
   } catch (_) {}
 }
-watch(()=>route.params.id,load,{immediate:true})
-onBeforeUnmount(()=>{token++;cleanup()})
+
+watch(() => route.params.id, load, { immediate: true })
+onBeforeUnmount(() => { token++; cleanup() })
 </script>
