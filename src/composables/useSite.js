@@ -2,7 +2,9 @@ import { computed, ref } from 'vue'
 import { getSiteConfig, getCategories } from '../api/site'
 
 const config = ref({ name: 'XXVOD', title: 'XXVOD', description: '视频聚合与在线播放', logo: '', copyright: '' })
+// Keep the complete CMS category tree; individual views decide which levels to render.
 const categories = ref([])
+const rootCategories = computed(() => categories.value.filter(item => Number(item.type_pid || 0) === 0))
 const ready = ref(false)
 const loading = ref(false)
 
@@ -16,7 +18,7 @@ export function useSite() {
         getCategories().catch(() => [])
       ])
       if (settings && typeof settings === 'object') config.value = { ...config.value, ...settings }
-      if (Array.isArray(classList)) categories.value = classList.filter(item => Number(item.type_pid || 0) === 0)
+      if (Array.isArray(classList)) categories.value = classList.filter(item => item && item.type_id != null)
       ready.value = true
       document.title = config.value.title || config.value.name || 'XXVOD'
       const description = document.querySelector('meta[name="description"]')
@@ -28,5 +30,5 @@ export function useSite() {
       if (theme) theme.setAttribute('content', config.value.theme_color || '#0b0b0f')
     } finally { loading.value = false }
   }
-  return { config, categories, ready, loading, loadSite, siteName: computed(() => config.value.name || 'XXVOD') }
+  return { config, categories, rootCategories, ready, loading, loadSite, siteName: computed(() => config.value.name || 'XXVOD') }
 }
