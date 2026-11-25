@@ -9,8 +9,9 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api.php': {
-        target: 'http://127.0.0.1:8080',
-        changeOrigin: true
+        target: 'https://mac.91aix.cfd',
+        changeOrigin: true,
+        secure: true
       }
     }
   },
