@@ -65,3 +65,5 @@ Font Awesome 与 Orbitron、Bebas Neue、Inter 字体使用固定版本的 Cloud
 ## 播放器
 
 播放页使用 Hola Spark Player（独立 HTML5 播放器），按 CMS 播放地址中的第一组线路固定播放，即“线路一”；该线路内的选集仍可切换。Hola Spark 播放器脚本在播放页按需加载。未配置 Hola Customer ID，因此本次不启用 Spark 账号统计或额外 CDN 功能。
+
+Hola Spark Customer ID（可选）：如需启用 Hola 账号关联功能，在 Cloudflare Pages 构建环境中设置 `VITE_HOLASPARK_CUSTOMER_ID`，重新构建部署即可；未设置时以独立播放器模式加载。
