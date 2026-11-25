@@ -9,12 +9,10 @@
       </div>
       <div class="cf-hero-orb"><span class="orb-ring one"></span><span class="orb-ring two"></span><i class="fa-solid fa-play"></i></div>
     </section>
-
     <section class="cf-section">
       <header class="cf-sec-head"><div><span class="cf-eyebrow pink">TRENDING NOW</span><h2 class="cf-h2">热门精选 <span class="cf-grad-text">TRENDING</span></h2></div><router-link class="cf-see-all" to="/popular">查看全部 <i class="fa-solid fa-arrow-right"></i></router-link></header>
       <VideoGrid :items="popular" :loading="loading" />
     </section>
-
     <section class="cf-section">
       <header class="cf-sec-head"><div><span class="cf-eyebrow">FRESH UPDATES</span><h2 class="cf-h2">最新更新 <span class="cf-grad-text">LATEST</span></h2></div><router-link class="cf-see-all" to="/latest">更多内容 <i class="fa-solid fa-arrow-right"></i></router-link></header>
       <div class="cf-chip-row">
@@ -22,7 +20,6 @@
       </div>
       <VideoGrid :items="latest" :loading="loading" />
     </section>
-
     <section class="cf-section">
       <header class="cf-sec-head"><div><span class="cf-eyebrow pink">BROWSE BY GENRE</span><h2 class="cf-h2">视频分类 <span class="cf-grad-text-hot">CATEGORIES</span></h2></div><router-link to="/categories" class="cf-see-all">全部分类 <i class="fa-solid fa-arrow-right"></i></router-link></header>
       <div class="cf-category-grid">
@@ -37,7 +34,7 @@
 </template>
 <script setup>
 import { onMounted, ref } from 'vue'
-import { getHotVideos, getLatestVideos } from '../api/vod'
+import { getHotVideos, getLatestVideos, getScoreVideos } from '../api/vod'
 import { getCategories, getHotTags } from '../api/site'
 import VideoGrid from '../components/VideoGrid.vue'
 const popular = ref([])
@@ -64,8 +61,10 @@ async function load() {
 async function change(key) {
   active.value = key
   loading.value = true
-  try { latest.value = (await (key === 'hits' ? getHotVideos(1, 20) : getLatestVideos(1, 20))).list }
-  catch (_) { latest.value = [] }
+  try {
+    const loaders = { time: getLatestVideos, hits: getHotVideos, score: getScoreVideos }
+    latest.value = (await loaders[key](1, 20)).list
+  } catch (_) { latest.value = [] }
   finally { loading.value = false }
 }
 onMounted(load)
