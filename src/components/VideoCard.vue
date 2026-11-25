@@ -1,20 +1,21 @@
 <template>
   <router-link :to="`/play/${item.id}`" class="cf-video-card">
-    <div class="cf-video-thumb" :class="{ 'is-loading': !loaded && !failed, 'is-loaded': loaded }">
-      <div v-if="!loaded && !failed" class="cf-video-image-loading" role="status" aria-live="polite">
+    <div ref="thumb" class="cf-video-thumb" :class="{ 'is-loading': !loaded && !loadError, 'is-loaded': loaded }">
+      <div v-if="!loaded && !loadError" class="cf-video-image-loading" role="status" aria-live="polite">
         <span class="cf-video-image-spinner" aria-hidden="true"></span>
         <span>图片加载中...</span>
       </div>
       <img
-        v-if="shouldLoad"
+        v-if="shouldLoad && !loadError"
         :src="cover"
         :alt="item.title"
         loading="lazy"
         decoding="async"
+        fetchpriority="low"
         @load="onLoaded"
         @error="onFailed"
       />
-      <div v-if="failed" class="cf-video-image-fallback" role="img" aria-label="图片加载失败">
+      <div v-if="loadError" class="cf-video-image-fallback" role="img" aria-label="图片加载失败">
         <i class="fa-regular fa-image" aria-hidden="true"></i>
         <span>图片加载失败</span>
       </div>
@@ -32,50 +33,39 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({ item: { type: Object, required: true } })
+const thumb = ref(null)
 const shouldLoad = ref(false)
 const loaded = ref(false)
-const failed = ref(false)
-const thumb = ref(null)
+const useFallback = ref(false)
+const loadError = ref(false)
 let observer = null
 
-const cover = computed(() => props.item?.poster || '/fallback.svg')
+const cover = computed(() => useFallback.value ? '/fallback.svg' : (props.item?.poster || '/fallback.svg'))
 
 function startLoading() {
   shouldLoad.value = true
-  if (observer && thumb.value) {
-    observer.unobserve(thumb.value)
-  }
+  if (observer && thumb.value) observer.unobserve(thumb.value)
 }
 
 function onLoaded() {
   loaded.value = true
-  failed.value = false
+  loadError.value = false
 }
 
 function onFailed() {
-  if (!failed.value && cover.value !== '/fallback.svg') {
-    failed.value = true
+  if (!useFallback.value && cover.value !== '/fallback.svg') {
+    useFallback.value = true
     loaded.value = false
-    // Attempt the local fallback once; if it also fails, retain the failure placeholder.
-    shouldLoad.value = false
-    requestAnimationFrame(() => {
-      shouldLoad.value = true
-    })
-  } else {
-    failed.value = true
-    loaded.value = false
+    return
   }
+  loadError.value = true
+  loaded.value = false
 }
 
 watch(() => props.item?.poster, () => {
   loaded.value = false
-  failed.value = false
-  if (shouldLoad.value) {
-    shouldLoad.value = false
-    requestAnimationFrame(() => {
-      shouldLoad.value = true
-    })
-  }
+  useFallback.value = false
+  loadError.value = false
 })
 
 onMounted(() => {
@@ -85,13 +75,8 @@ onMounted(() => {
   }
 
   observer = new IntersectionObserver((entries) => {
-    if (entries.some(entry => entry.isIntersecting)) {
-      startLoading()
-    }
-  }, {
-    rootMargin: '240px 0px',
-    threshold: 0.01
-  })
+    if (entries.some(entry => entry.isIntersecting)) startLoading()
+  }, { rootMargin: '240px 0px', threshold: 0.01 })
 
   if (thumb.value) observer.observe(thumb.value)
   else startLoading()
