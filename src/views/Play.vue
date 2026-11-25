@@ -72,18 +72,23 @@ function loadSparkPlayer() {
   if (sparkPromise) return sparkPromise
   sparkPromise = new Promise((resolve, reject) => {
     let script = document.getElementById('hola-spark-player-script')
+    if (script && typeof window.hola_player === 'function') {
+      resolve()
+      return
+    }
+    const shouldAppend = !script
     if (!script) {
       script = document.createElement('script')
       script.id = 'hola-spark-player-script'
       script.src = 'https://player2.h-cdn.com/hola_player.js'
       script.async = true
-      document.head.appendChild(script)
     }
     script.addEventListener('load', () => {
       if (typeof window.hola_player === 'function') resolve()
       else reject(new Error('Hola Spark Player 初始化接口不可用'))
     }, { once: true })
     script.addEventListener('error', () => reject(new Error('Hola Spark Player 脚本加载失败')), { once: true })
+    if (shouldAppend) document.head.appendChild(script)
   }).catch(error => {
     sparkPromise = null
     throw error
