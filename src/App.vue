@@ -3,9 +3,9 @@
     <header class="cf-topbar">
       <button class="cf-menu-btn" aria-label="切换侧栏" @click="toggleSidebar"><i class="fa-solid fa-bars"></i></button>
       <router-link class="cf-logo" to="/">
-        <img v-if="config.logo" class="cf-site-logo" :src="config.logo" :alt="config.name || 'XXVOD'" />
+        <img v-if="config.logo" class="cf-site-logo" :src="config.logo" :alt="config.name || ''" />
         <span v-else class="cf-mark"><i class="fa-solid fa-play"></i></span>
-        <span class="cf-word-block"><span class="cf-word">{{ config.name || 'XXVOD' }}</span></span>
+        <span v-if="config.name" class="cf-word-block"><span class="cf-word">{{ config.name }}</span></span>
       </router-link>
       <form class="cf-topbar-search" @submit.prevent="search"><i class="fa-solid fa-magnifying-glass"></i><input v-model="keyword" placeholder="搜索视频、分类或标签..." autocomplete="off" maxlength="100" /></form>
       <nav class="cf-topbar-nav"><router-link to="/" exact-active-class="active">首页</router-link><router-link to="/latest" active-class="active">最新</router-link><router-link to="/popular" active-class="active">热门</router-link></nav>
@@ -60,7 +60,7 @@
 
     <button class="cf-sb-toggle" aria-label="折叠侧边栏" @click="collapsed = !collapsed"><i class="fa-solid fa-chevron-left"></i></button>
     <main class="cf-main"><div class="cf-page-container"><AdSlot slot="top" /><FriendlyLinks /><router-view /><AdSlot slot="bottom" />
-      <footer class="cf-footer"><div class="cf-footer-brand"><span class="cf-mark small"><i class="fa-solid fa-play"></i></span><strong>{{ config.name || 'XXVOD' }}</strong></div><p>{{ config.copyright || `© ${new Date().getFullYear()} ${config.name || 'XXVOD'}` }}</p><p class="cf-footer-note">页面内容由站点后端提供。</p></footer>
+      <footer class="cf-footer"><div v-if="config.name || config.logo" class="cf-footer-brand"><img v-if="config.logo" class="cf-footer-logo" :src="config.logo" :alt="config.name || ''" /><strong v-if="config.name">{{ config.name }}</strong></div><p v-if="config.copyright">{{ config.copyright }}</p><p class="cf-footer-note">页面内容由站点后端提供。</p></footer>
     </div></main>
 
     <nav class="cf-tabbar">

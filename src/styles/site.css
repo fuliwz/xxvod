@@ -82,3 +82,16 @@ button,input{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:
 .cf-sb-category-trigger[aria-expanded="true"] .cf-sb-chevron{color:var(--cf-cyan)}
 .cf-sb-category-trigger:hover .cf-sb-chevron{color:var(--cf-cyan)}
 .cf-sidebar-collapsed .cf-sb-category-trigger .cf-sb-chevron{display:none}
+
+
+/* Content skeletons for home, category lists and search results */
+.cf-skeleton-card{pointer-events:none;overflow:hidden}
+.cf-skeleton-block,.cf-skeleton-line{position:relative;overflow:hidden;border:0!important;background:#211c31!important}
+.cf-skeleton-block:after,.cf-skeleton-line:after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,#ffffff12,transparent);animation:cf-skeleton-shimmer 1.35s ease-in-out infinite}
+.cf-skeleton-line{height:11px;margin:10px 2px 0;border-radius:5px}
+.cf-skeleton-line.title{width:82%;height:13px;margin-top:12px}
+.cf-skeleton-line.meta{width:48%;height:9px;margin-top:9px;opacity:.72}
+.cf-skeleton-card .cf-video-thumb{border-color:#ffffff08}
+@keyframes cf-skeleton-shimmer{100%{transform:translateX(100%)}}
+.cf-footer-logo{width:26px;height:26px;object-fit:contain;border-radius:6px}
+@media(prefers-reduced-motion:reduce){.cf-skeleton-block:after,.cf-skeleton-line:after{animation:none;transform:none;background:#ffffff08}}

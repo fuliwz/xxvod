@@ -33,7 +33,7 @@
 </template>
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { getRandomHotVideos, getLatestVideos, getScoreVideos, VIDEO_PAGE_SIZE } from '../api/vod'
+import { getRandomHotVideos, getLatestVideos, getHotVideos, getScoreVideos, VIDEO_PAGE_SIZE } from '../api/vod'
 import { getCategories } from '../api/site'
 import VideoGrid from '../components/VideoGrid.vue'
 const popular = ref([])
