@@ -95,3 +95,12 @@ button,input{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:
 @keyframes cf-skeleton-shimmer{100%{transform:translateX(100%)}}
 .cf-footer-logo{width:26px;height:26px;object-fit:contain;border-radius:6px}
 @media(prefers-reduced-motion:reduce){.cf-skeleton-block:after,.cf-skeleton-line:after{animation:none;transform:none;background:#ffffff08}}
+
+.cf-video-image-loading{position:absolute;z-index:1;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;background:linear-gradient(135deg,#171326,#211b35);color:#aaa2bc;font-size:12px;letter-spacing:.3px}
+.cf-video-image-spinner{width:25px;height:25px;border:2px solid #ffffff25;border-top-color:var(--cf-cyan,#00e5ff);border-radius:50%;animation:cf-video-spin .8s linear infinite}
+@keyframes cf-video-spin{to{transform:rotate(360deg)}}
+.cf-video-thumb>img{position:relative;z-index:1;display:block}
+.cf-video-thumb.is-loading>img{opacity:0}
+.cf-video-thumb.is-loaded>img{opacity:1}
+.cf-video-image-fallback{position:absolute;z-index:1;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:#171326;color:#777188;font-size:11px}
+.cf-video-image-fallback i{font-size:24px}
