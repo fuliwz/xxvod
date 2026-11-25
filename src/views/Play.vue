@@ -5,10 +5,10 @@
       <div class="cf-play-layout">
         <div class="cf-play-main">
           <div class="cf-player-shell">
-            <div class="cf-player-bar"><span><i class="fa-solid fa-circle-play"></i> NOW PLAYING</span><span>{{ isHlsUrl(activeEpisode?.url) ? 'HLS.JS PLAYER' : 'HOLA SPARK PLAYER' }}</span></div>
+            <div class="cf-player-bar"><span><i class="fa-solid fa-circle-play"></i> NOW PLAYING</span><span>HOLA SPARK PLAYER</span></div>
             <div class="cf-player-box">
               <video id="xxvod-hola-player" ref="videoEl" class="video-js vjs-default-skin" :poster="item.poster || undefined" playsinline webkit-playsinline controls preload="metadata">
-                <source v-if="activeEpisode && !isHlsUrl(activeEpisode.url)" :key="episodeIndex" :src="activeEpisode.url" :type="mediaType(activeEpisode.url)" />
+                <source v-if="activeEpisode" :key="episodeIndex" :src="activeEpisode.url" :type="mediaType(activeEpisode.url)" />
               </video>
             </div>
           </div>
@@ -44,7 +44,6 @@ import { useRoute } from 'vue-router'
 import { getDetail, getRelatedVideos, parsePlaySources } from '../api/vod'
 import { saveHistory } from '../utils/history'
 import VideoGrid from '../components/VideoGrid.vue'
-import Hls from 'hls.js'
 
 const route = useRoute()
 const item = ref(null)
@@ -56,7 +55,6 @@ const episodeIndex = ref(0)
 let sparkPromise = null
 let token = 0
 let sparkInitialized = false
-let hlsInstance = null
 
 // Keep only the first CMS play source (线路一).
 const sources = computed(() => parsePlaySources(item.value).slice(0, 1))
@@ -66,17 +64,6 @@ const activeEpisode = computed(() => activeSource.value?.episodes[episodeIndex.v
 function formatViews(value) {
   const n = Number(value) || 0
   return n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1000 ? (n / 1e3).toFixed(1) + 'K' : String(n)
-}
-
-function isHlsUrl(url = '') {
-  return /\.m3u8(?:$|[?#])/i.test(String(url))
-}
-
-function destroyHls() {
-  if (hlsInstance) {
-    try { hlsInstance.destroy() } catch (_) {}
-    hlsInstance = null
-  }
 }
 
 function mediaType(url = '') {
@@ -113,7 +100,7 @@ function loadSparkPlayer() {
       script = document.createElement('script')
       script.id = 'hola-spark-player-script'
       const customerId = String(import.meta.env.VITE_HOLASPARK_CUSTOMER_ID || '').trim()
-      script.src = 'https://player2.h-cdn.com/hola_player.js' + (customerId ? '?customer=' + encodeURIComponent(customerId) : '')
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/hola_player/1.1.4/hola_player.js
       script.async = true
       script.crossOrigin = 'anonymous'
     }
@@ -129,7 +116,7 @@ function loadSparkPlayer() {
     }
     const onError = () => {
       script.dataset.failed = 'true'
-      reject(new Error('无法下载 https://player2.h-cdn.com/hola_player.js'))
+      reject(new Error('无法下载 https://cdnjs.cloudflare.com/ajax/libs/hola_player/1.1.4/hola_player.js'))
     }
 
     script.addEventListener('load', onLoad, { once: true })
@@ -166,48 +153,7 @@ async function initializePlayer() {
   video.removeEventListener('error', onVideoError)
   video.addEventListener('error', onVideoError)
 
-  // Chromium needs hls.js/MSE for HLS; a native <source> is not enough.
-  destroyHls()
-  if (isHlsUrl(episode.url)) {
-    const sparkPlayer = getSparkInstance()
-    if (sparkPlayer && !sparkPlayer.isDisposed?.()) {
-      try { sparkPlayer.dispose() } catch (_) {}
-      sparkInitialized = false
-    }
-    video.pause()
-    video.removeAttribute('src')
-    video.querySelectorAll('source').forEach(source => source.remove())
-    video.load()
-
-    if (Hls.isSupported()) {
-      const hls = new Hls({ enableWorker: true, lowLatencyMode: false, backBufferLength: 90 })
-      hlsInstance = hls
-      hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (!data.fatal) return
-        const status = data.response?.code ? ' HTTP ' + data.response.code : ''
-        playerError.value = 'HLS 播放失败：' + (data.details || data.type) + status + '。请检查 m3u8/ts 跨域 CORS、Referer/防盗链及上游地址是否有效。'
-        if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-          try { hls.recoverMediaError() } catch (_) {}
-        }
-      })
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        if (hlsInstance === hls) playerError.value = ''
-      })
-      hls.loadSource(episode.url)
-      hls.attachMedia(video)
-      return
-    }
-
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = episode.url
-      video.load()
-      return
-    }
-    playerError.value = '当前浏览器不支持 HLS（M3U8）：Media Source Extensions 不可用，且没有原生 HLS 支持。'
-    return
-  }
-
-  // Non-HLS sources continue to use the existing Hola Spark integration.
+  // Hola Player 1.1.4 supports both progressive media and HLS/M3U8.
   try {
     const existingPlayer = getSparkInstance()
     if (existingPlayer) {
@@ -255,11 +201,6 @@ async function selectEpisode(index) {
 
   playerError.value = ''
   try {
-    if (isHlsUrl(episode.url)) {
-      await initializePlayer()
-      saveHistory(item.value, episode)
-      return
-    }
     const player = getSparkInstance()
     if (player) {
       player.src({ src: episode.url, type: mediaType(episode.url) })
@@ -282,7 +223,6 @@ async function selectEpisode(index) {
 }
 
 function resetPlayback() {
-  destroyHls()
   const player = getSparkInstance()
   if (player && !player.isDisposed?.()) {
     try { player.pause() } catch (_) {}
@@ -293,7 +233,6 @@ function resetPlayback() {
 }
 
 function cleanup() {
-  destroyHls()
   const player = getSparkInstance()
   if (player && !player.isDisposed?.()) {
     try { player.pause() } catch (_) {}
