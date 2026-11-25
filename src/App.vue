@@ -22,7 +22,19 @@
         <router-link class="cf-sb-item" to="/categories" active-class="active" @click="mobileOpen = false"><span class="cf-sb-icon"><i class="fa-solid fa-layer-group"></i></span><span class="cf-sb-label">全部分类</span></router-link>
         <div class="cf-sb-divider"></div>
         <div class="cf-sb-section-label">CATEGORIES</div>
-        <router-link v-for="cat in categories.slice(0,24)" :key="cat.type_id" class="cf-sb-item cf-sb-category" :to="`/category/${cat.type_id}`" active-class="active" @click="mobileOpen = false"><span class="cf-sb-icon"><i class="fa-solid fa-film"></i></span><span class="cf-sb-label">{{ cat.type_name }}</span></router-link>
+        <div v-for="cat in rootCategories.slice(0,24)" :key="cat.type_id" class="cf-sb-category-group">
+          <div class="cf-sb-category-parent">
+            <router-link class="cf-sb-item cf-sb-category" :to="`/category/${cat.type_id}`" active-class="active" @click="mobileOpen = false">
+              <span class="cf-sb-icon"><i class="fa-solid fa-film"></i></span><span class="cf-sb-label">{{ cat.type_name }}</span>
+            </router-link>
+            <button v-if="childrenFor(cat).length" class="cf-sb-expand" :aria-label="`展开${cat.type_name}二级分类`" :aria-expanded="isExpanded(cat.type_id)" @click="toggleCategory(cat.type_id)">
+              <i class="fa-solid" :class="isExpanded(cat.type_id) ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+            </button>
+          </div>
+          <div v-if="isExpanded(cat.type_id)" class="cf-sb-subcategories">
+            <router-link v-for="child in childrenFor(cat)" :key="child.type_id" class="cf-sb-subcategory" :to="`/category/${child.type_id}`" active-class="active" @click="mobileOpen = false">{{ child.type_name }}</router-link>
+          </div>
+        </div>
         <div class="cf-sb-divider"></div>
         <router-link class="cf-sb-item" to="/history" active-class="active" @click="mobileOpen = false"><span class="cf-sb-icon"><i class="fa-regular fa-clock"></i></span><span class="cf-sb-label">观看记录</span></router-link>
       </div>
@@ -47,19 +59,31 @@
   </div>
 </template>
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useSite } from './composables/useSite'
 import AdSlot from './components/AdSlot.vue'
 import FriendlyLinks from './components/FriendlyLinks.vue'
 import SiteStats from './components/SiteStats.vue'
-const { config, categories, loadSite } = useSite()
+const { config, categories, rootCategories, loadSite } = useSite()
 const router = useRouter()
 const route = useRoute()
 const keyword = ref('')
 const collapsed = ref(false)
 const mobileOpen = ref(false)
 const mobileSearch = ref(false)
+const expandedCategories = ref([])
+const categoryChildren = computed(() => categories.value.filter(item => Number(item.type_pid || 0) !== 0))
+function childrenFor(category) {
+  return categoryChildren.value.filter(item => String(item.type_pid) === String(category.type_id))
+}
+function isExpanded(id) { return expandedCategories.value.includes(String(id)) }
+function toggleCategory(id) {
+  const key = String(id)
+  expandedCategories.value = isExpanded(key)
+    ? expandedCategories.value.filter(value => value !== key)
+    : [...expandedCategories.value, key]
+}
 function isMobile() { return window.matchMedia('(max-width: 639px)').matches }
 function toggleSidebar() { if (isMobile()) mobileOpen.value = !mobileOpen.value; else collapsed.value = !collapsed.value }
 function search() {

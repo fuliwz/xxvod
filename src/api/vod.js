@@ -49,7 +49,7 @@ export function normalizeVod(v = {}) {
 export function parsePlaySources(item) {
   if (!item) return []
   const names = String(item.playFrom || '').split('$$$')
-  const rawSources = String(item.playUrl || '').split('$$$')
+  const rawSources = String(item.playUrl || '').split('$$$').slice(0, 1)
   return rawSources.map((raw, index) => {
     const episodes = raw.split('#').slice(0, 300).map((entry, i) => {
       const parts = entry.trim().split('$')
