@@ -26,21 +26,15 @@ npm run build
 
 ## Nginx SPA 回退
 
-Vue 使用 HTML5 History 路由。Nginx 需要把不存在的前端路径回退到 `index.html`，但必须保留 PHP API 的正常执行。可在现有站点配置的 `server` 块中合并以下规则（不要覆盖已有 PHP-FPM 配置）：
+Vue 使用 HTML5 History 路由。Nginx 需要把不存在的前端路径回退到 `index.html`。在现有站点配置中保留宝塔自动生成的 PHP-FPM 解析规则，只需将普通页面请求配置为：
 
 ```nginx
-location = /api.php {
-    include fastcgi_params;
-    fastcgi_param SCRIPT_FILENAME $document_root/api.php;
-    fastcgi_pass unix:/tmp/php-cgi-80.sock;
-}
-
 location / {
     try_files $uri $uri/ /index.html;
 }
 ```
 
-如果宝塔 PHP-FPM socket 路径不是 `/tmp/php-cgi-80.sock`，请使用当前站点原有 PHP location 中的 `fastcgi_pass` 值。配置完成后执行 `nginx -t` 并重载 Nginx。
+不要删除或覆盖现有的 `location ~ \\.php$` PHP-FPM 规则，否则 `/api.php` 将无法执行。配置完成后执行 `nginx -t` 并重载 Nginx。
 
 ## 动态接口约定
 
