@@ -42,3 +42,19 @@ button,input{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:
 /* Hola Spark / VideoJS player sizing */
 .cf-player-box .video-js{width:100%;height:100%;font-family:var(--cf-font-ui)}
 .cf-player-box .vjs-tech{object-fit:contain}
+
+
+/* All categories: root groups with their child category links */
+.cf-all-categories{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.cf-all-category-group{min-width:0;padding:13px;border:1px solid var(--cf-hairline);border-radius:13px;background:linear-gradient(135deg,#151127,#0e0c19)}
+.cf-root-category-card{padding:5px 4px 12px;border:0;border-radius:0;background:transparent}
+.cf-root-category-card:hover{transform:none}
+.cf-all-category-children{display:flex;flex-wrap:wrap;gap:7px;padding-top:10px;border-top:1px solid var(--cf-hairline)}
+.cf-all-category-child{padding:6px 10px;border:1px solid #ffffff12;border-radius:7px;background:#ffffff07;color:#aaa3b8;font-size:11px;transition:all .2s}
+.cf-all-category-child:hover{border-color:#00e5ff55;color:var(--cf-cyan);background:#00e5ff0b}
+.cf-sb-tag{display:flex;align-items:center;gap:12px;min-height:34px;padding:0 13px;margin:2px 0;border:1px solid transparent;border-radius:8px;color:#8f879f;font-size:11px;white-space:nowrap;transition:all .2s}
+.cf-sb-tag>i{width:16px;text-align:center;color:var(--cf-pink);font-size:11px}
+.cf-sb-tag:hover{border-color:#ff3cac33;background:#ff3cac0d;color:#fff}
+.cf-sidebar-collapsed .cf-sb-tag{justify-content:center;padding:0}
+.cf-sidebar-collapsed .cf-sb-tag .cf-sb-label{display:none}
+@media(max-width:639px){.cf-all-categories{grid-template-columns:1fr;gap:10px}}
