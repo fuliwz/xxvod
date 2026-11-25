@@ -12,7 +12,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getCategories } from '../api/site'
-import { getCategoryVideos, getHotVideos, getLatestVideos } from '../api/vod'
+import { getCategoryVideos, getHotVideos, getLatestVideos, VIDEO_PAGE_SIZE } from '../api/vod'
 import VideoGrid from '../components/VideoGrid.vue'
 import Pagination from '../components/Pagination.vue'
 const props = defineProps({ latest: Boolean, popular: Boolean })
@@ -42,7 +42,7 @@ async function load() {
   try {
     const [cats] = await Promise.all([getCategories()])
     categories.value = Array.isArray(cats) ? cats.filter(c => c && c.type_id != null) : []
-    const result = props.latest ? await getLatestVideos(page.value, 24) : props.popular ? await getHotVideos(page.value, 24) : await getCategoryVideos(route.params.id, page.value, 24)
+    const result = props.latest ? await getLatestVideos(page.value, VIDEO_PAGE_SIZE) : props.popular ? await getHotVideos(page.value, VIDEO_PAGE_SIZE) : await getCategoryVideos(route.params.id, page.value, VIDEO_PAGE_SIZE)
     if (current !== token) return
     videos.value = result.list
     pageCount.value = Math.max(1, result.pageCount || 1)

@@ -23,14 +23,31 @@
         <router-link class="cf-sb-item" to="/tags" active-class="active" @click="mobileOpen = false"><span class="cf-sb-icon"><i class="fa-solid fa-hashtag"></i></span><span class="cf-sb-label">热门标签</span></router-link>
         <div class="cf-sb-divider"></div>
         <div class="cf-sb-section-label">视频分类</div>
-        <div v-for="cat in rootCategories.slice(0,24)" :key="cat.type_id" class="cf-sb-category-group">
+        <div v-for="(cat, index) in rootCategories.slice(0,24)" :key="cat.type_id" class="cf-sb-category-group">
           <div class="cf-sb-category-parent">
-            <router-link class="cf-sb-item cf-sb-category" :to="`/category/${cat.type_id}`" active-class="active" @click="mobileOpen = false">
-              <span class="cf-sb-icon"><i class="fa-solid fa-film"></i></span><span class="cf-sb-label">{{ cat.type_name }}</span>
-            </router-link>
-            <button v-if="childrenFor(cat).length" class="cf-sb-expand" :aria-label="`展开${cat.type_name}二级分类`" :aria-expanded="isExpanded(cat.type_id)" @click="toggleCategory(cat.type_id)">
-              <i class="fa-solid" :class="isExpanded(cat.type_id) ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+            <button
+              v-if="childrenFor(cat).length"
+              type="button"
+              class="cf-sb-item cf-sb-category cf-sb-category-trigger"
+              :class="{ active: isCategoryGroupActive(cat) }"
+              :aria-label="`展开或收起${cat.type_name}二级分类`"
+              :aria-expanded="isExpanded(cat.type_id)"
+              @click="toggleCategory(cat.type_id)"
+            >
+              <span class="cf-sb-icon"><i class="fa-solid" :class="categoryIcon(index)"></i></span>
+              <span class="cf-sb-label">{{ cat.type_name }}</span>
+              <i class="fa-solid cf-sb-chevron" :class="isExpanded(cat.type_id) ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
             </button>
+            <router-link
+              v-else
+              class="cf-sb-item cf-sb-category"
+              :to="`/category/${cat.type_id}`"
+              active-class="active"
+              @click="mobileOpen = false"
+            >
+              <span class="cf-sb-icon"><i class="fa-solid" :class="categoryIcon(index)"></i></span>
+              <span class="cf-sb-label">{{ cat.type_name }}</span>
+            </router-link>
           </div>
           <div v-if="isExpanded(cat.type_id)" class="cf-sb-subcategories">
             <router-link v-for="child in childrenFor(cat)" :key="child.type_id" class="cf-sb-subcategory" :to="`/category/${child.type_id}`" active-class="active" @click="mobileOpen = false">{{ child.type_name }}</router-link>
@@ -77,12 +94,29 @@ const categoryChildren = computed(() => categories.value.filter(item => Number(i
 function childrenFor(category) {
   return categoryChildren.value.filter(item => String(item.type_pid) === String(category.type_id))
 }
+const categoryIcons = [
+  'fa-clapperboard', 'fa-film', 'fa-video', 'fa-camera', 'fa-tv', 'fa-masks-theater',
+  'fa-music', 'fa-heart', 'fa-star', 'fa-bolt', 'fa-gamepad', 'fa-book-open',
+  'fa-globe', 'fa-fire', 'fa-crown', 'fa-gem', 'fa-leaf', 'fa-car',
+  'fa-plane', 'fa-paw', 'fa-flask', 'fa-football', 'fa-basket-shopping', 'fa-building'
+]
+function categoryIcon(index) { return categoryIcons[index % categoryIcons.length] }
 function isExpanded(id) { return expandedCategories.value.includes(String(id)) }
+function isCategoryGroupActive(category) {
+  const currentId = String(route.params.id || '')
+  return currentId === String(category.type_id) || childrenFor(category).some(child => String(child.type_id) === currentId)
+}
 function toggleCategory(id) {
   const key = String(id)
   expandedCategories.value = isExpanded(key)
     ? expandedCategories.value.filter(value => value !== key)
     : [...expandedCategories.value, key]
+}
+function syncExpandedCategory() {
+  const current = categories.value.find(item => String(item.type_id) === String(route.params.id || ''))
+  if (!current || Number(current.type_pid || 0) === 0) return
+  const parentId = String(current.type_pid)
+  if (!isExpanded(parentId)) expandedCategories.value = [...expandedCategories.value, parentId]
 }
 function isMobile() { return window.matchMedia('(max-width: 639px)').matches }
 function toggleSidebar() { if (isMobile()) mobileOpen.value = !mobileOpen.value; else collapsed.value = !collapsed.value }
@@ -93,5 +127,6 @@ function search() {
   if (q) router.push({ path: '/search', query: { wd: q } })
 }
 onMounted(loadSite)
+watch(() => [route.params.id, categories.value.length], syncExpandedCategory, { immediate: true })
 watch(() => route.fullPath, () => { mobileOpen.value = false; window.scrollTo({ top: 0, behavior: 'instant' }) })
 </script>
