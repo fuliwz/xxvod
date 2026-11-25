@@ -10,7 +10,6 @@ import History from './views/History.vue'
 import NotFound from './views/NotFound.vue'
 import './styles/theme.css'
 import './styles/site.css'
-import 'plyr/dist/plyr.css'
 
 const router = createRouter({
   history: createWebHistory(),
