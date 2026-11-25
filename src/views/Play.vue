@@ -1,6 +1,6 @@
 <template>
   <section class="cf-page cf-play-page">
-    <div v-if="loading" class="cf-player-loading"><span class="cf-spinner"></span> 正在加载视频信息…</div>
+    <div v-if="loading && !item" class="cf-player-loading"><span class="cf-spinner"></span> 正在加载视频信息…</div>
     <template v-else-if="item">
       <div class="cf-play-layout">
         <div class="cf-play-main">
@@ -154,9 +154,19 @@ async function initializePlayer() {
   video.addEventListener('error', onVideoError)
 
   // The source element must exist before hola_player() scans the video tag.
-  video.load()
-
   try {
+    const existingPlayer = getSparkInstance()
+    if (existingPlayer) {
+      existingPlayer.src({ src: episode.url, type: mediaType(episode.url) })
+      existingPlayer.load()
+      existingPlayer.on?.('error', () => {
+        const error = existingPlayer.error?.()
+        playerError.value = error?.message || 'Hola Spark 播放器无法读取该视频地址'
+      })
+      return
+    }
+
+    video.load()
     await loadSparkPlayer()
     if (!sparkInitialized) {
       window.hola_player()
@@ -166,6 +176,8 @@ async function initializePlayer() {
     const player = getSparkInstance()
     if (player) {
       player.ready(() => {
+        player.src({ src: episode.url, type: mediaType(episode.url) })
+        player.load()
         player.on?.('error', () => {
           const error = player.error?.()
           playerError.value = error?.message || 'Hola Spark 播放器无法读取该视频地址'
@@ -210,6 +222,16 @@ async function selectEpisode(index) {
   }
 }
 
+function resetPlayback() {
+  const player = getSparkInstance()
+  if (player && !player.isDisposed?.()) {
+    try { player.pause() } catch (_) {}
+  }
+  if (videoEl.value) {
+    videoEl.value.removeEventListener('error', onVideoError)
+  }
+}
+
 function cleanup() {
   const player = getSparkInstance()
   if (player && !player.isDisposed?.()) {
@@ -217,19 +239,12 @@ function cleanup() {
     try { player.dispose() } catch (_) {}
   }
   sparkInitialized = false
-  if (videoEl.value) {
-    videoEl.value.removeEventListener('error', onVideoError)
-    videoEl.value.pause()
-    videoEl.value.removeAttribute('src')
-    videoEl.value.querySelectorAll('source').forEach(source => source.removeAttribute('src'))
-    videoEl.value.load()
-  }
+  if (videoEl.value) videoEl.value.removeEventListener('error', onVideoError)
 }
 
 async function load() {
   const current = ++token
-  cleanup()
-  item.value = null
+  resetPlayback()
   related.value = []
   episodeIndex.value = 0
   playerError.value = ''
