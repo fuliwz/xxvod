@@ -6,7 +6,7 @@
   --cf-grad-multi:linear-gradient(135deg,#8a2be2 0%,#00e5ff 60%,#ff3cac 100%);
   --cf-topbar-h:76px;--cf-tabbar-h:64px;--cf-sidebar-w:220px;--cf-sidebar-collapsed-w:72px;--cf-content-max:1400px;--cf-gutter:16px;
   --cf-safe-top:env(safe-area-inset-top,0px);--cf-safe-bot:env(safe-area-inset-bottom,0px);
-  --cf-font-display:'Bebas Neue',Impact,sans-serif;--cf-font-ui:'Rajdhani','Nunito',system-ui,sans-serif;
+  --cf-font-display:'Bebas Neue',Impact,sans-serif;--cf-font-ui:'Inter',system-ui,sans-serif;
 }
 @media(min-width:640px){:root{--cf-gutter:24px;--cf-topbar-h:72px}}
 @media(min-width:960px){:root{--cf-gutter:40px;--cf-topbar-h:80px}}
