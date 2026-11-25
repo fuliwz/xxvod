@@ -1,6 +1,6 @@
 <template>
   <section class="cf-page cf-list-page">
-    <header class="cf-page-title"><div><span class="cf-eyebrow">{{ latest ? 'FRESH CONTENT' : popular ? 'MOST VIEWED' : 'EXPLORE LIBRARY' }}</span><h1 class="cf-h2">{{ title }}</h1><p>发现更多精彩内容</p></div></header>
+    <header class="cf-page-title"><div><span class="cf-eyebrow">{{ latest ? '' : popular ? '' : '' }}</span><h1 class="cf-h2">{{ title }}</h1><p>发现更多精彩内容</p></div></header>
     <div v-if="!latest && !popular && childCategories.length" class="cf-chip-row cf-category-tabs">
       <router-link v-for="cat in childCategories" :key="cat.type_id" :to="`/category/${cat.type_id}`" class="cf-chip" :class="{ active: String(cat.type_id) === String(route.params.id) }"><span class="cf-chip-dot"></span>{{ cat.type_name }}</router-link>
     </div>
