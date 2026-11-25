@@ -26,9 +26,15 @@ export function getSiteConfig(force = false) {
 function collectCategories(payload) {
   if (Array.isArray(payload)) return payload
   if (!payload || typeof payload !== 'object') return []
-  for (const key of ['list', 'class', 'categories', 'category', 'data']) {
+  for (const key of ['list', 'class', 'categories', 'category', 'data', 'class_list', 'type_list', 'rows', 'result']) {
     if (Array.isArray(payload[key])) return payload[key]
+    if (payload[key] && typeof payload[key] === 'object') {
+      const nested = collectCategories(payload[key])
+      if (nested.length) return nested
+    }
   }
+  const values = Object.values(payload)
+  if (values.length && values.every(value => value && typeof value === 'object')) return values
   return []
 }
 
