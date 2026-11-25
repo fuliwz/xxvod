@@ -33,7 +33,7 @@
 </template>
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { getHotVideos, getLatestVideos, getScoreVideos, VIDEO_PAGE_SIZE } from '../api/vod'
+import { getRandomHotVideos, getLatestVideos, getScoreVideos, VIDEO_PAGE_SIZE } from '../api/vod'
 import { getCategories } from '../api/site'
 import VideoGrid from '../components/VideoGrid.vue'
 const popular = ref([])
@@ -48,7 +48,7 @@ async function load() {
   loading.value = true
   try {
     const [hot, fresh, cats] = await Promise.all([
-      getHotVideos(1, VIDEO_PAGE_SIZE), getLatestVideos(1, VIDEO_PAGE_SIZE), getCategories()
+      getRandomHotVideos(VIDEO_PAGE_SIZE), getLatestVideos(1, VIDEO_PAGE_SIZE), getCategories()
     ])
     popular.value = hot.list
     latest.value = fresh.list
