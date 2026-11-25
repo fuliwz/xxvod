@@ -1,8 +1,42 @@
 # xxvod 前端
 
-Vue 3 + Vite 单页前端。GitHub 仅负责源码版本管理；网站数据、CMS API、站点设置、广告、友情链接和统计均由独立 PHP 8.0 VPS 后端提供。
+Vue 3 + Vite 单页前端。GitHub 仅负责源码版本管理；网站数据、CMS API、站点设置、广告、友情链接和统计均由独立 PHP VPS 后端提供。
 
-后端 API 默认使用当前站点同源的 `/api.php`。正式前端与 PHP 后端部署在 `https://mac.91aix.cfd/` 时，无需额外配置。若前端使用其他域名，请在构建前设置 `VITE_API_BASE_URL=https://mac.91aix.cfd/api.php`，并在 PHP 后端允许该前端域名的 CORS 请求。
+生产 API 默认地址为 `https://api-v2.2028ios.top/api.php`。本地 Vite 开发时，`/api.php` 会由开发服务器代理到 `https://api-v2.2028ios.top`。如需切换 API 地址，可在构建环境设置 `VITE_API_BASE_URL`。
+
+## API 域名部署要求
+
+- API 接口地址：`https://api-v2.2028ios.top/api.php`。
+- API 域名根路径 `/` 应由 VPS/Nginx 返回 403 或 404，不提供网站首页。
+- 不要封锁 `/api.php`；前端必须能够正常请求该接口。
+- API 服务端应通过 CORS 只允许实际前端来源，例如 `https://xxvod.pages.dev` 以及你正式使用的前端域名。不要把 CORS 设置为任意来源。
+- 若启用了带凭据的跨域请求，必须使用明确的 Origin 白名单，不能使用通配符 `*`。
+- 仅隐藏 API 域名首页并不能阻止他人直接调用已公开的 API 路径。需要保护数据时，应在 PHP API 中实施鉴权、限流和参数校验。
+
+Nginx 示例（需与现有 PHP-FPM 配置合并，不要覆盖 PHP 解析规则）：
+
+```nginx
+# API 域名只开放 API 入口，根路径及其他普通路径拒绝访问
+location = / {
+    return 404;
+}
+
+location = /api.php {
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME $document_root/api.php;
+    fastcgi_pass unix:/tmp/php-cgi-80.sock;
+}
+
+location ~ \.php$ {
+    return 404;
+}
+
+location / {
+    return 404;
+}
+```
+
+上面的 `fastcgi_pass` socket 路径只是示例，必须替换成宝塔当前 PHP 版本实际使用的 PHP-FPM socket 或地址。若 API 还有必要的静态资源或其他接口路径，也要明确加入白名单。
 
 ## 开发
 
@@ -11,7 +45,7 @@ npm install
 npm run dev
 ```
 
-本地 Vite 开发服务器会将 `/api.php` 代理到 `https://mac.91aix.cfd/api.php`。
+本地 Vite 开发服务器会将 `/api.php` 代理到 `https://api-v2.2028ios.top/api.php`。
 
 ## 构建
 
@@ -22,11 +56,11 @@ npm install
 npm run build
 ```
 
-将 `dist/` 中的文件上传到 VPS 网站根目录，与 PHP 后端入口 `api.php` 同域部署。不要部署到 Cloudflare Pages。
+将 `dist/` 中的文件部署到前端托管环境。
 
 ## Nginx SPA 回退
 
-Vue 使用 HTML5 History 路由。Nginx 需要把不存在的前端路径回退到 `index.html`。在现有站点配置中保留宝塔自动生成的 PHP-FPM 解析规则，只需将普通页面请求配置为：
+Vue 使用 HTML5 History 路由。前端站点的 Nginx 需要把不存在的前端路径回退到 `index.html`。在现有站点配置中保留宝塔自动生成的 PHP-FPM 解析规则，只需将普通页面请求配置为：
 
 ```nginx
 location / {
@@ -34,7 +68,7 @@ location / {
 }
 ```
 
-不要删除或覆盖现有的 `location ~ \\.php$` PHP-FPM 规则，否则 `/api.php` 将无法执行。配置完成后执行 `nginx -t` 并重载 Nginx。
+不要删除或覆盖现有的 `location ~ \.php$` PHP-FPM 规则，否则 PHP 接口将无法执行。配置完成后执行 `nginx -t` 并重载 Nginx。
 
 ## 动态接口约定
 
@@ -57,15 +91,16 @@ PHP 后端启用 `api_encrypt.php` 的 AES-256-GCM 响应加密后，前端会�
 构建环境需要设置：
 
 - `VITE_API_ENCRYPTION_SECRET`：必须与 VPS `api_encrypt.php` 中的 `$secret` 字符串完全一致。
-- `VITE_API_BASE_URL`：可选，API 地址；不设置时使用代码中的默认地址。
+- `VITE_API_BASE_URL`：可选，API 地址；不设置时默认使用 `https://api-v2.2028ios.top/api.php`。
 
 本地开发可在项目根目录创建不提交到 Git 的 `.env.local`：
 
 ```dotenv
 VITE_API_ENCRYPTION_SECRET=替换为与VPS完全一致的密钥字符串
+VITE_API_BASE_URL=https://api-v2.2028ios.top/api.php
 ```
 
-Cloudflare Pages 请在项目的 Settings → Environment variables 中添加 `VITE_API_ENCRYPTION_SECRET`，然后重新部署。生产环境和 Preview 环境如需分别构建，都要配置对应变量。
+Cloudflare Pages 请在项目的 Settings → Environment variables 中添加 `VITE_API_ENCRYPTION_SECRET`。如需覆盖默认 API 地址，再添加 `VITE_API_BASE_URL`。修改后重新部署。
 
 **安全说明：** Vite 的 `VITE_*` 变量会被编译进浏览器 JavaScript，访问者仍可能提取密钥并解密数据。本功能主要让 Network 面板中的响应不再直接显示明文 JSON，属于基础混淆，不是防逆向或真正的客户端密钥保护。不要把实际密钥提交到 GitHub。
 
@@ -83,6 +118,4 @@ Font Awesome 与 Orbitron、Bebas Neue、Inter 字体使用固定版本的 Cloud
 
 ## 播放器
 
-播放页使用 Hola Spark Player（独立 HTML5 播放器），按 CMS 播放地址中的第一组线路固定播放，即“线路一”；该线路内的选集仍可切换。Hola Spark 播放器脚本在播放页按需加载。未配置 Hola Customer ID，因此本次不启用 Spark 账号统计或额外 CDN 功能。
-
-Hola Spark Customer ID（可选）：如需启用 Hola 账号关联功能，在 Cloudflare Pages 构建环境中设置 `VITE_HOLASPARK_CUSTOMER_ID`，重新构建部署即可；未设置时以独立播放器模式加载。
+播放页使用 Plyr + HLS.js，HLS 在支持 MSE 的浏览器中由 HLS.js 播放，Safari/iOS 等浏览器使用原生 HLS；普通 MP4/WebM/OGV 使用 HTML5 video。播放器按需加载 HLS 引擎，并支持播放速度与音画同步设置。

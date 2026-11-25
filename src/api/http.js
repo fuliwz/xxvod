@@ -1,8 +1,10 @@
 import axios from 'axios'
 
-// The frontend is hosted on Cloudflare Pages while the PHP API runs on the VPS.
-// Keep the API host configurable; the response decryption works with either host.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://mac.91aix.cfd/api.php'
+// Production API is hosted on the dedicated API domain.
+// During local Vite development, use the proxy below to avoid browser CORS.
+const API_BASE_URL = import.meta.env.DEV
+  ? '/api.php'
+  : (import.meta.env.VITE_API_BASE_URL || 'https://api-v2.2028ios.top/api.php')
 
 // Must exactly match the $secret string configured in the VPS api_encrypt.php.
 // Vite embeds VITE_* values in the browser bundle, so this is obfuscation, not
@@ -47,8 +49,6 @@ async function getApiCryptoKey() {
 
   if (!apiCryptoKeyPromise) {
     apiCryptoKeyPromise = (async () => {
-      // Match PHP: hash('sha256', $secret, true), then use the 32-byte result
-      // as the raw AES-256-GCM key.
       const digest = await globalThis.crypto.subtle.digest(
         'SHA-256',
         new TextEncoder().encode(API_ENCRYPTION_SECRET)
@@ -71,7 +71,6 @@ async function getApiCryptoKey() {
 }
 
 async function decryptApiResponse(payload) {
-  // Keep compatibility during rollout: plaintext responses pass through.
   if (!payload || typeof payload !== 'object' || Number(payload.encrypted) !== 1) {
     return payload
   }
@@ -94,19 +93,13 @@ async function decryptApiResponse(payload) {
     throw new Error('API 加密响应的认证标签长度不正确')
   }
 
-  // PHP OpenSSL returns ciphertext and tag separately. Web Crypto expects
-  // the 16-byte GCM tag appended to the ciphertext.
   const encryptedBytes = new Uint8Array(ciphertext.length + tag.length)
   encryptedBytes.set(ciphertext)
   encryptedBytes.set(tag, ciphertext.length)
 
   try {
     const plaintext = await globalThis.crypto.subtle.decrypt(
-      {
-        name: 'AES-GCM',
-        iv,
-        tagLength: 128
-      },
+      { name: 'AES-GCM', iv, tagLength: 128 },
       key,
       encryptedBytes
     )
@@ -129,7 +122,6 @@ http.interceptors.response.use(
     return response
   },
   async error => {
-    // The PHP gateway also encrypts JSON error responses (for example 404/502).
     if (error?.response) {
       try {
         error.response.data = await decryptApiResponse(error.response.data)
