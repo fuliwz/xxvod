@@ -59,7 +59,7 @@
     </aside>
 
     <button class="cf-sb-toggle" aria-label="折叠侧边栏" @click="collapsed = !collapsed"><i class="fa-solid fa-chevron-left"></i></button>
-    <main class="cf-main"><div class="cf-page-container"><AdSlot slot="top" /><router-view /><FriendlyLinks /><AdSlot slot="bottom" />
+    <main class="cf-main"><div class="cf-page-container"><AdSlot slot="top" /><FriendlyLinks /><router-view /><AdSlot slot="bottom" />
       <footer class="cf-footer"><div class="cf-footer-brand"><span class="cf-mark small"><i class="fa-solid fa-play"></i></span><strong>{{ config.name || 'XXVOD' }}</strong></div><p>{{ config.copyright || `© ${new Date().getFullYear()} ${config.name || 'XXVOD'}` }}</p><p class="cf-footer-note">页面内容由站点后端提供。</p></footer>
     </div></main>
 
