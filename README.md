@@ -57,3 +57,7 @@ Font Awesome 与 Orbitron、Bebas Neue、Inter 字体使用固定版本的 Cloud
 ## 说明
 
 广告代码与统计代码由 PHP 配置控制，只应由受信任管理员填写。PHP 后端和 VPS 部署说明不放在本前端仓库。
+
+## 播放器
+
+播放页使用 Hola Spark Player（独立 HTML5 播放器），按 CMS 播放地址中的第一组线路固定播放，即“线路一”；该线路内的选集仍可切换。Hola Spark 播放器脚本在播放页按需加载。未配置 Hola Customer ID，因此本次不启用 Spark 账号统计或额外 CDN 功能。
