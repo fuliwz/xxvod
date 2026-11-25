@@ -71,3 +71,11 @@ button,input{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:
 .cf-page-jump select:focus{border-color:var(--cf-primary)}
 @media(max-width:900px){.cf-hot-tags-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:639px){.cf-hot-tags-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.cf-hot-tag-card{padding:10px}.cf-page-jump{gap:4px}.cf-page-jump select{max-width:105px}}
+
+
+/* Sidebar first-level category rows act as expanders when child categories exist */
+.cf-sb-category-trigger{width:100%;justify-content:flex-start;text-align:left;background:transparent;cursor:pointer}
+.cf-sb-category-trigger .cf-sb-chevron{margin-left:auto;color:#77718a;font-size:10px;transition:transform .2s,color .2s}
+.cf-sb-category-trigger[aria-expanded="true"] .cf-sb-chevron{color:var(--cf-cyan)}
+.cf-sb-category-trigger:hover .cf-sb-chevron{color:var(--cf-cyan)}
+.cf-sidebar-collapsed .cf-sb-category-trigger .cf-sb-chevron{display:none}
