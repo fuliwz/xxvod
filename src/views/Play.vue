@@ -51,36 +51,52 @@ const episodeIndex = ref(0)
 let player = null
 let hls = null
 let token = 0
+let PlyrClass = null
+let HlsClass = null
+let librariesPromise = null
 const sources = computed(() => parsePlaySources(item.value))
 const activeSource = computed(() => sources.value[sourceIndex.value] || null)
 const activeEpisode = computed(() => activeSource.value?.episodes[episodeIndex.value] || null)
 function formatViews(value) { const n=Number(value)||0; return n>=1e6 ? (n/1e6).toFixed(1)+'M' : n>=1000 ? (n/1e3).toFixed(1)+'K' : String(n) }
 function cleanup() { if(hls){hls.destroy();hls=null} if(player){player.destroy();player=null} }
+async function loadLibraries() {
+  if (!librariesPromise) librariesPromise = Promise.all([import('plyr'), import('hls.js')]).then(([p,h]) => {
+    PlyrClass = p.default || p
+    HlsClass = h.default || h
+    return true
+  }).catch(error => { librariesPromise = null; throw error })
+  return librariesPromise
+}
 async function playEpisode() {
   await nextTick()
-  if(!videoEl.value || !activeEpisode.value) return
+  if(!videoEl.value || !activeEpisode.value || !PlyrClass || !HlsClass) return
   cleanup()
-  const url=activeEpisode.value.url
+  const video = videoEl.value
+  const url = activeEpisode.value.url
+  playerError.value = ''
   try {
-    const [{default:Plyr},{default:Hls}] = await Promise.all([import('plyr'),import('hls.js')])
-    if(/\.m3u8(?:$|\?)/i.test(url) && Hls.isSupported()) {
-      hls=new Hls({enableWorker:true,backBufferLength:60})
-      hls.loadSource(url); hls.attachMedia(videoEl.value)
-      hls.on(Hls.Events.MANIFEST_PARSED,()=>videoEl.value?.play().catch(()=>{}))
+    player = new PlyrClass(video,{controls:['play-large','play','progress','current-time','mute','volume','settings','pip','fullscreen'],settings:['speed'],ratio:'16:9'})
+    if(/\.m3u8(?:$|\?)/i.test(url) && HlsClass.isSupported()) {
+      hls = new HlsClass({enableWorker:true,backBufferLength:60})
+      hls.on(HlsClass.Events.MANIFEST_PARSED,()=>player?.play().catch(()=>{}))
+      hls.on(HlsClass.Events.ERROR,(_event,data)=>{ if(data?.fatal) playerError.value='HLS 媒体加载失败，请切换线路或选集' })
+      hls.loadSource(url)
+      hls.attachMedia(video)
+    } else if (video.canPlayType('application/vnd.apple.mpegurl') || !/\.m3u8(?:$|\?)/i.test(url)) {
+      video.src = url
+      video.load()
+      player.play().catch(()=>{})
     } else {
-      videoEl.value.src=url
+      playerError.value='当前浏览器不支持 HLS 播放'
     }
-    player=new Plyr(videoEl.value,{controls:['play-large','play','progress','current-time','mute','volume','settings','pip','fullscreen'],settings:['speed'],ratio:'16:9'})
-    videoEl.value.addEventListener('error',()=>{playerError.value='当前媒体地址无法播放，请切换线路或选集'},{once:true})
-    player.play().catch(()=>{})
     saveHistory(item.value,activeEpisode.value)
   } catch (_) { playerError.value='播放器加载失败，请刷新后重试' }
 }
-function selectSource(i){sourceIndex.value=i;episodeIndex.value=0;playerError.value='';playEpisode()}
-function selectEpisode(i){episodeIndex.value=i;playerError.value='';playEpisode()}
+function selectSource(i){sourceIndex.value=i;episodeIndex.value=0;playEpisode()}
+function selectEpisode(i){episodeIndex.value=i;playEpisode()}
 async function load() {
   const current=++token
-  cleanup(); item.value=null; related.value=[]; loading.value=true
+  cleanup(); item.value=null; related.value=[]; sourceIndex.value=0; episodeIndex.value=0; loading.value=true
   try {
     const detail=await getDetail(route.params.id)
     if(current!==token) return
@@ -88,6 +104,8 @@ async function load() {
     if(detail) {
       related.value=await getRelatedVideos(detail,16).catch(()=>[])
       document.title=`${detail.title} - XXVOD`
+      await loadLibraries()
+      if(current!==token) return
       await nextTick()
       if(activeEpisode.value) await playEpisode()
     }
