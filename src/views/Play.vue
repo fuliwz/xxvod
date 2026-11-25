@@ -80,7 +80,7 @@ function loadSparkPlayer() {
     if (!script) {
       script = document.createElement('script')
       script.id = 'hola-spark-player-script'
-      script.src = 'https://player2.h-cdn.com/hola_player.js'
+      const customerId = String(import.meta.env.VITE_HOLASPARK_CUSTOMER_ID || '').trim()\n      script.src = 'https://player2.h-cdn.com/hola_player.js' + (customerId ? '?customer=' + encodeURIComponent(customerId) : '')
       script.async = true
     }
     script.addEventListener('load', () => {
