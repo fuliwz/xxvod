@@ -129,3 +129,14 @@ button,input{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:
     margin:0 auto!important;
   }
 }
+
+
+/* Keep native site navigation above page content on mobile.
+   Third-party floating banners are separately blocked by AdSlot.vue. */
+@media(max-width:639px){
+  #app .cf-topbar{z-index:2147483000!important}
+  #app .cf-tabbar{z-index:2147483000!important}
+  #app .cf-sidebar{z-index:2147483000!important}
+  #app .cf-mobile-scrim{z-index:2147482990!important}
+  .cf-ad-overlay-blocked{display:none!important;visibility:hidden!important;pointer-events:none!important}
+}
