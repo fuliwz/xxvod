@@ -66,68 +66,78 @@ let rotationTimer = null
 let lastHtml = ''
 let htmlRendered = false
 
-// Some third-party banner scripts append fixed-position elements directly to
-// document.body instead of rendering inside the ad slot. On phones, normalize
-// only newly-added external high-layer overlays; never touch elements inside
-// the application root (including the top bar and bottom tab bar).
-function installMobileAdOverlayGuard() {
-  if (typeof window === 'undefined' || !document.body || window.__cfAdOverlayGuard) return
+// Keep the site's mobile header below a third-party fixed banner at the top
+// of the viewport. The banner remains visible and clickable; only the app layout
+// is shifted by the banner's measured height.
+function installMobileAdTopOffset() {
+  if (typeof window === 'undefined' || !document.body || window.__cfAdTopOffsetGuard) return
 
   const isMobile = () => window.matchMedia('(max-width: 639px)').matches
 
-  function normalize(node) {
-    if (!isMobile() || !(node instanceof HTMLElement)) return
+  function updateOffset() {
+    const app = document.querySelector('.cf-app')
+    if (!app) return
 
-    const candidates = [node, ...node.querySelectorAll('*')]
-    candidates.forEach(element => {
+    if (!isMobile()) {
+      app.style.setProperty('--cf-mobile-ad-top-offset', '0px')
+      return
+    }
+
+    const viewportWidth = document.documentElement.clientWidth || window.innerWidth
+    const viewportHeight = window.innerHeight
+    let topOffset = 0
+
+    document.querySelectorAll('body *').forEach(element => {
       if (!(element instanceof HTMLElement)) return
-      if (element.classList.contains('cf-ad-overlay-blocked')) return
+      if (element.closest('.cf-ad-overlay-measured')) return
 
-      // Never touch the site's own header, tab bar, sidebar or other app UI.
-      const insideApp = Boolean(element.closest('#app'))
+      const insideApp = Boolean(element.closest('.cf-app'))
       const insideAdSlot = Boolean(element.closest('.cf-ad-slot'))
+      // Ignore the site's own interface, but allow ads rendered inside AdSlot.
       if (insideApp && !insideAdSlot) return
 
       const style = window.getComputedStyle(element)
-      const floating = style.position === 'fixed' || style.position === 'sticky'
-      const zIndex = Number.parseInt(style.zIndex, 10)
-      const elevated = Number.isFinite(zIndex) && zIndex >= 100
-      const isOutsideApp = !insideApp
+      if (style.position !== 'fixed' && style.position !== 'sticky') return
 
-      // Third-party overlays are commonly appended outside #app, or injected
-      // into the ad slot. Hide them instead of converting them to static flow:
-      // this prevents an overlay from covering navigation or shifting layout.
-      if (!(floating || (isOutsideApp && elevated))) return
+      const rect = element.getBoundingClientRect()
+      const isTopBanner = rect.top <= 24 &&
+        rect.bottom > 0 &&
+        rect.height >= 24 &&
+        rect.height <= viewportHeight * 0.35 &&
+        rect.width >= viewportWidth * 0.5
 
-      element.classList.add('cf-ad-overlay-blocked')
-      element.style.setProperty('display', 'none', 'important')
-      element.style.setProperty('visibility', 'hidden', 'important')
-      element.style.setProperty('pointer-events', 'none', 'important')
-      element.setAttribute('aria-hidden', 'true')
+      if (isTopBanner) topOffset = Math.max(topOffset, Math.min(rect.bottom, 240))
+    })
+
+    const next = Math.ceil(topOffset)
+    const current = Number.parseFloat(app.style.getPropertyValue('--cf-mobile-ad-top-offset')) || 0
+    if (Math.abs(current - next) >= 2) {
+      app.style.setProperty('--cf-mobile-ad-top-offset', next + 'px')
+    }
+  }
+
+  let updateQueued = false
+  const scheduleUpdate = () => {
+    if (updateQueued) return
+    updateQueued = true
+    window.requestAnimationFrame(() => {
+      updateQueued = false
+      updateOffset()
     })
   }
 
-  // Scan existing nodes as well as later insertions. Attribute observation is
-  // important because some ad networks insert a blank node and style it later.
-  normalize(document.body)
-  const observer = new MutationObserver(records => {
-    records.forEach(record => {
-      if (record.type === 'attributes') {
-        normalize(record.target)
-      } else {
-        record.addedNodes.forEach(node => normalize(node))
-      }
-    })
-  })
+  updateOffset()
+  const observer = new MutationObserver(scheduleUpdate)
   observer.observe(document.body, {
     childList: true,
     subtree: true,
     attributes: true,
     attributeFilter: ['style', 'class']
   })
-  window.__cfAdOverlayGuard = observer
+  window.addEventListener('resize', scheduleUpdate, { passive: true })
+  window.addEventListener('orientationchange', scheduleUpdate, { passive: true })
+  window.__cfAdTopOffsetGuard = observer
 }
-
 const items = computed(() => {
   const list = ads.value?.slots?.[props.slot]
   return Array.isArray(list)
@@ -235,6 +245,7 @@ watch(
 )
 
 onMounted(async () => {
+  installMobileAdTopOffset()
   await loadAds(false)
   startTimers()
 })
