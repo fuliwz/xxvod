@@ -71,7 +71,7 @@ let htmlRendered = false
 // only newly-added external high-layer overlays; never touch elements inside
 // the application root (including the top bar and bottom tab bar).
 function installMobileAdOverlayGuard() {
-  if (typeof window === 'undefined'' || !document.body || window.__cfAdOverlayGuard) return
+  if (typeof window === 'undefined' || !document.body || window.__cfAdOverlayGuard) return
 
   const isMobile = () => window.matchMedia('(max-width: 639px)').matches
 
