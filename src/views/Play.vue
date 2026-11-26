@@ -2,14 +2,6 @@
   <section class="cf-page cf-play-page">
     <div v-if="loading && !item" class="cf-player-loading"><span class="cf-spinner"></span> 正在加载视频信息…</div>
     <template v-else-if="item">
-      <section class="cf-route-diagnostic" style="margin:12px 0;padding:10px;border:1px dashed #d97706;border-radius:8px;background:#fff7ed;color:#7c2d12;font-size:12px;line-height:1.5;word-break:break-all;">
-        <strong>临时路由诊断（测试后删除）</strong>
-        <div>浏览器地址：{{ routeDiagnostics.href }}</div>
-        <div>pathname：{{ routeDiagnostics.pathname }}</div>
-        <div>Vue Router：{{ routeDiagnostics.fullPath }}</div>
-        <div>history.state：{{ routeDiagnostics.historyState }}</div>
-      </section>
-
       <div class="cf-play-layout">
         <div class="cf-play-main">
           <div class="cf-player-shell">
@@ -308,44 +300,6 @@ async function load() {
     if (current === token) loading.value = false
   }
 }
-
-// Temporary mobile route diagnostics. Remove after the Quark test is complete.
-const routeDiagnostics = ref({
-  href: typeof window !== 'undefined' ? window.location.href : '',
-  pathname: typeof window !== 'undefined' ? window.location.pathname : '',
-  fullPath: route.fullPath,
-  historyState: ''
-})
-
-let diagnosticTimer = null
-function refreshRouteDiagnostics() {
-  routeDiagnostics.value = {
-    href: window.location.href,
-    pathname: window.location.pathname,
-    fullPath: route.fullPath,
-    historyState: JSON.stringify(window.history.state)
-  }
-}
-
-watch(() => route.fullPath, () => {
-  refreshRouteDiagnostics()
-  // Quark may update the browser URL asynchronously relative to Vue Router.
-  setTimeout(refreshRouteDiagnostics, 100)
-  setTimeout(refreshRouteDiagnostics, 600)
-  setTimeout(refreshRouteDiagnostics, 1500)
-}, { immediate: true, flush: 'sync' })
-
-if (typeof window !== 'undefined') {
-  window.addEventListener('pageshow', refreshRouteDiagnostics)
-  window.addEventListener('popstate', refreshRouteDiagnostics)
-  diagnosticTimer = window.setInterval(refreshRouteDiagnostics, 1000)
-}
-
-onBeforeUnmount(() => {
-  if (diagnosticTimer) window.clearInterval(diagnosticTimer)
-  window.removeEventListener('pageshow', refreshRouteDiagnostics)
-  window.removeEventListener('popstate', refreshRouteDiagnostics)
-})
 
 async function share() {
   try {
