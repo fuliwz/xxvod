@@ -81,6 +81,7 @@ function installMobileAdOverlayGuard() {
     const candidates = [node, ...node.querySelectorAll('*')]
     candidates.forEach(element => {
       if (!(element instanceof HTMLElement)) return
+      if (element.classList.contains('cf-ad-overlay-blocked')) return
 
       // Never touch the site's own header, tab bar, sidebar or other app UI.
       const insideApp = Boolean(element.closest('#app'))
