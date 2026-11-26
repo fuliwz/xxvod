@@ -347,7 +347,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('popstate', refreshRouteDiagnostics)
 })
 
-function share() {
+async function share() {
   try {
     if (navigator.share) await navigator.share({ title: item.value?.title || document.title, url: location.href })
     else if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(location.href); alert('链接已复制') }
