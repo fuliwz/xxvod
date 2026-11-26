@@ -85,16 +85,18 @@ const rotatedItems = computed(() => {
 
 const html = computed(() => String(ads.value?.html?.[props.slot] || ''))
 
-function renderHtml() {
+function renderHtml(force = false) {
   const root = htmlRoot.value
   const source = html.value
 
   if (!root || !source || !enabled.value) return
-  if (source === lastHtml && htmlRendered && root.childNodes.length) return
+  if (!force && source === lastHtml && htmlRendered && root.childNodes.length) return
 
+  // Recreate embedded scripts on SPA navigation. Re-inserting the same script
+  // node does not execute it again, so build fresh script elements each time.
   lastHtml = source
   htmlRendered = false
-  root.innerHTML = ''
+  root.replaceChildren()
 
   const holder = document.createElement('div')
   holder.innerHTML = source
@@ -119,14 +121,18 @@ function renderHtml() {
   htmlRendered = true
 }
 
-async function loadAds(force = false) {
+async function loadAds(force = false, rerenderHtml = false, rotate = false) {
   try {
     const result = await getAds(force)
     ads.value = result || {}
     enabled.value = ads.value.enabled === true
-    rotationIndex.value = 0
+    if (rotate && items.value.length > 1) {
+      rotationIndex.value = (rotationIndex.value + 1) % items.value.length
+    } else if (!rotate) {
+      rotationIndex.value = 0
+    }
     await nextTick()
-    renderHtml()
+    renderHtml(rerenderHtml)
   } catch (error) {
     console.error('[XXVOD Ads] 广告加载失败:', error)
   }
@@ -159,7 +165,7 @@ watch(
 // request through getAds(), avoiding duplicate API requests on one navigation.
 watch(
   () => route.fullPath,
-  () => loadAds(true),
+  () => loadAds(true, true, true),
   { flush: 'post' }
 )
 
