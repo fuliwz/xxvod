@@ -3,6 +3,8 @@ import { apiGet } from './http'
 let configPromise
 let configCache
 let adsPromise
+let adsCache
+let adsCacheAt = 0
 let linksPromise
 let tagsPromise
 
@@ -62,6 +64,28 @@ export const getCategories = async () => {
 }
 
 export const getFriendlyLinks = () => linksPromise || (linksPromise = apiGet({ action: 'links' }).catch(error => { linksPromise = null; throw error }))
-export const getAds = () => adsPromise || (adsPromise = apiGet({ action: 'ads' }).catch(error => { adsPromise = null; throw error }))
+
+// Share one in-flight request between the top and bottom ad slots. Keep a short
+// cache for ordinary reads, while force=true refreshes the server configuration.
+export function getAds(force = false) {
+  const now = Date.now()
+  if (!force && adsCache && now - adsCacheAt < 30000) {
+    return Promise.resolve(adsCache)
+  }
+  if (adsPromise) return adsPromise
+
+  adsPromise = apiGet({ action: 'ads' })
+    .then(data => {
+      adsCache = data || {}
+      adsCacheAt = Date.now()
+      return adsCache
+    })
+    .finally(() => {
+      adsPromise = null
+    })
+
+  return adsPromise
+}
+
 export const getStats = () => apiGet({ action: 'stats' })
 export const getHotTags = () => tagsPromise || (tagsPromise = apiGet({ action: 'tags' }).catch(error => { tagsPromise = null; throw error }))
