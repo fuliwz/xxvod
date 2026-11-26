@@ -34,7 +34,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getRandomHotVideos, getLatestVideos, getHotVideos, getScoreVideos, VIDEO_PAGE_SIZE } from '../api/vod'
+import { getLatestVideos, getHotVideos, getScoreVideos, VIDEO_PAGE_SIZE } from '../api/vod'
 import { getCategories } from '../api/site'
 import VideoGrid from '../components/VideoGrid.vue'
 
@@ -56,7 +56,7 @@ async function load() {
     const sort = active.value
     const loaders = { time: getLatestVideos, hits: getHotVideos, score: getScoreVideos }
     const [hot, fresh, cats] = await Promise.all([
-      getRandomHotVideos(VIDEO_PAGE_SIZE),
+      getHotVideos(10, VIDEO_PAGE_SIZE),
       loaders[sort](1, VIDEO_PAGE_SIZE),
       getCategories()
     ])
