@@ -34,5 +34,12 @@ async function load() {
   finally { if (current === token) loading.value = false }
 }
 function go(next) { router.push({ query: { ...route.query, pg: next } }) }
+watch([keyword, () => route.query.pg], () => {
+  const n = Number(route.query.pg)
+  const pageLabel = Number.isFinite(n) && n > 1 ? ` - 第${Math.trunc(n)}页` : ''
+  document.title = keyword.value
+    ? `搜索：${keyword.value}${pageLabel} - XXVOD`
+    : '搜索结果 - XXVOD'
+}, { immediate: true })
 watch(() => [route.query.wd, route.query.pg], load, { immediate: true })
 </script>
