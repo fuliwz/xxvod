@@ -19,6 +19,100 @@ const http = axios.create({
   headers: { Accept: 'application/json' }
 })
 
+// Persistent browser cache. The in-memory map is a fallback for browsers where
+// IndexedDB is unavailable (for example, some private-browsing configurations).
+const DB_NAME = 'xxvod-api-cache'
+const DB_VERSION = 1
+const STORE_NAME = 'responses'
+const memoryCache = new Map()
+let dbPromise
+
+function openCacheDb() {
+  if (typeof indexedDB === 'undefined') return Promise.resolve(null)
+  if (!dbPromise) {
+    dbPromise = new Promise(resolve => {
+      let request
+      try {
+        request = indexedDB.open(DB_NAME, DB_VERSION)
+      } catch {
+        resolve(null)
+        return
+      }
+      request.onupgradeneeded = () => {
+        const db = request.result
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'key' })
+        }
+      }
+      request.onsuccess = () => {
+        const db = request.result
+        db.onversionchange = () => db.close()
+        resolve(db)
+      }
+      request.onerror = () => resolve(null)
+      request.onblocked = () => resolve(null)
+    }).catch(() => null)
+  }
+  return dbPromise
+}
+
+function makeCacheKey(params) {
+  const normalized = Object.keys(params || {}).sort().reduce((result, key) => {
+    result[key] = params[key] == null ? '' : params[key]
+    return result
+  }, {})
+  return JSON.stringify(normalized)
+}
+
+function cacheTtl(params = {}) {
+  const action = String(params.action || '')
+  if (action === 'config') return 10 * 60 * 1000
+  if (action === 'categories') return 30 * 60 * 1000
+  if (action === 'links' || action === 'tags') return 10 * 60 * 1000
+  if (action === 'ads') return 30 * 1000
+  if (action === 'stats') return 30 * 1000
+  if (action === 'vod') {
+    return params.ids ? 5 * 60 * 1000 : 60 * 1000
+  }
+  return 60 * 1000
+}
+
+async function readBrowserCache(key) {
+  const db = await openCacheDb()
+  if (!db) return memoryCache.get(key) || null
+  return new Promise(resolve => {
+    try {
+      const request = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key)
+      request.onsuccess = () => {
+        const record = request.result || memoryCache.get(key) || null
+        if (record) memoryCache.set(key, record)
+        resolve(record)
+      }
+      request.onerror = () => resolve(memoryCache.get(key) || null)
+    } catch {
+      resolve(memoryCache.get(key) || null)
+    }
+  })
+}
+
+async function writeBrowserCache(key, data, ttl) {
+  const record = { key, data, savedAt: Date.now(), expiresAt: Date.now() + ttl }
+  memoryCache.set(key, record)
+  const db = await openCacheDb()
+  if (!db) return
+  await new Promise(resolve => {
+    try {
+      const transaction = db.transaction(STORE_NAME, 'readwrite')
+      transaction.objectStore(STORE_NAME).put(record)
+      transaction.oncomplete = resolve
+      transaction.onerror = resolve
+      transaction.onabort = resolve
+    } catch {
+      resolve()
+    }
+  })
+}
+
 function base64ToBytes(value, fieldName) {
   if (typeof value !== 'string' || value === '') {
     throw new Error(`API 加密响应缺少 ${fieldName}`)
@@ -140,18 +234,41 @@ http.interceptors.response.use(
   }
 )
 
-export async function apiGet(params = {}) {
-  const response = await http.get('', { params })
-  const body = response?.data
+// Read a valid browser copy first. On a cache miss/expiry, request the API;
+// if the network fails, fall back to the last saved copy when one exists.
+// Pass { cache: false } to force a fresh API request.
+export async function apiGet(params = {}, options = {}) {
+  const useCache = options.cache !== false
+  const cacheKey = makeCacheKey(params)
+  const ttl = cacheTtl(params)
+  let staleRecord = null
 
-  if (!body || typeof body !== 'object' || Array.isArray(body)) {
-    throw new Error('后端返回的数据格式不正确')
-  }
-  if (body.code !== undefined && ![1, 200, '1', '200'].includes(body.code)) {
-    throw new Error(body.msg || '接口请求失败')
+  if (useCache) {
+    const cached = await readBrowserCache(cacheKey)
+    if (cached) {
+      if (cached.expiresAt > Date.now()) return cached.data
+      staleRecord = cached
+    }
   }
 
-  return body.data !== undefined ? body.data : body
+  try {
+    const response = await http.get('', { params })
+    const body = response?.data
+
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      throw new Error('后端返回的数据格式不正确')
+    }
+    if (body.code !== undefined && ![1, 200, '1', '200'].includes(body.code)) {
+      throw new Error(body.msg || '接口请求失败')
+    }
+
+    const data = body.data !== undefined ? body.data : body
+    if (useCache) await writeBrowserCache(cacheKey, data, ttl)
+    return data
+  } catch (error) {
+    if (staleRecord) return staleRecord.data
+    throw error
+  }
 }
 
 export default http
