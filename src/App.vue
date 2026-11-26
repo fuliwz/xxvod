@@ -129,4 +129,21 @@ function search() {
 onMounted(loadSite)
 watch(() => [route.params.id, categories.value.length], syncExpandedCategory, { immediate: true })
 watch(() => route.fullPath, () => { mobileOpen.value = false; window.scrollTo({ top: 0, behavior: 'instant' }) })
+
+const siteTitle = computed(() => config.value.title || config.value.name || 'XXVOD')
+watch(() => [route.path, route.query.wd, siteTitle.value], () => {
+  if (route.path.startsWith('/play/') || route.path.startsWith('/category/')) return
+  const pageTitles = {
+    '/': '首页',
+    '/categories': '全部分类',
+    '/tags': '热门标签',
+    '/latest': '最新更新',
+    '/popular': '热门推荐',
+    '/history': '观看记录'
+  }
+  const pageTitle = route.path === '/search'
+    ? (String(route.query.wd || '').trim() ? `搜索：${String(route.query.wd).trim().slice(0, 100)}` : '搜索')
+    : pageTitles[route.path] || '页面不存在'
+  document.title = `${pageTitle} - ${siteTitle.value}`
+}, { immediate: true })
 </script>
