@@ -77,16 +77,16 @@ function installMobileAdOverlayGuard() {
 
   function normalize(node) {
     if (!isMobile() || !(node instanceof HTMLElement)) return
-    if (node.closest('#app')) return
-
     const candidates = [node, ...node.querySelectorAll('*')]
     candidates.forEach(element => {
-      if (!(element instanceof HTMLElement) || element.closest('#app')) return
+      if (!(element instanceof HTMLElement)) return
+      const insideAdSlot = Boolean(element.closest('.cf-ad-slot'))
+      if (element.closest('#app') && !insideAdSlot) return
       const style = window.getComputedStyle(element)
       const zIndex = Number.parseInt(style.zIndex, 10)
       const floating = style.position === 'fixed' || style.position === 'sticky'
       const highLayer = Number.isFinite(zIndex) && zIndex >= 1000
-      if (!floating || (!highLayer && element.tagName !== 'IFRAME')) return
+      if (!floating || (!insideAdSlot && !highLayer && element.tagName !== 'IFRAME')) return
 
       element.classList.add('cf-ad-overlay-normalized')
       element.style.setProperty('position', 'static', 'important')
