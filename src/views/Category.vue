@@ -12,12 +12,14 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getCategories } from '../api/site'
+import { useSite } from '../composables/useSite'
 import { getCategoryVideos, getHotVideos, getLatestVideos, VIDEO_PAGE_SIZE } from '../api/vod'
 import VideoGrid from '../components/VideoGrid.vue'
 import Pagination from '../components/Pagination.vue'
 const props = defineProps({ latest: Boolean, popular: Boolean })
 const route = useRoute()
 const router = useRouter()
+const { config } = useSite()
 const videos = ref([])
 const categories = ref([])
 const page = ref(1)
@@ -50,10 +52,11 @@ async function load() {
   finally { if (current === token) loading.value = false }
 }
 function go(next) { router.push({ query: { ...route.query, pg: next } }) }
-watch(title, value => {
+watch(() => [title.value, route.query.pg, config.value.title, config.value.name], () => {
   const n = Number(route.query.pg)
   const pageLabel = Number.isFinite(n) && n > 1 ? ` - 第${Math.trunc(n)}页` : ''
-  document.title = `${value}${pageLabel} - XXVOD`
+  const siteTitle = config.value.title || config.value.name || 'XXVOD'
+  document.title = `${title.value}${pageLabel} - ${siteTitle}`
 }, { immediate: true })
 watch(() => [route.params.id, route.query.pg, props.latest, props.popular], load, { immediate: true })
 </script>
