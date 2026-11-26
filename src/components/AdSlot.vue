@@ -64,6 +64,7 @@ const rotationIndex = ref(0)
 let refreshTimer = null
 let rotationTimer = null
 let lastHtml = ''
+let htmlRendered = false
 
 const items = computed(() => {
   const list = ads.value?.slots?.[props.slot]
@@ -88,9 +89,11 @@ function renderHtml() {
   const root = htmlRoot.value
   const source = html.value
 
-  if (!root || !source || !enabled.value || source === lastHtml) return
+  if (!root || !source || !enabled.value) return
+  if (source === lastHtml && htmlRendered && root.childNodes.length) return
 
   lastHtml = source
+  htmlRendered = false
   root.innerHTML = ''
 
   const holder = document.createElement('div')
@@ -113,6 +116,7 @@ function renderHtml() {
       root.appendChild(node)
     }
   })
+  htmlRendered = true
 }
 
 async function loadAds(force = false) {
