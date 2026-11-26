@@ -66,53 +66,64 @@ let rotationTimer = null
 let lastHtml = ''
 let htmlRendered = false
 
-// Keep the site's mobile header below a third-party fixed banner at the top
-// of the viewport. The banner remains visible and clickable; only the app layout
-// is shifted by the banner's measured height.
-function installMobileAdTopOffset() {
-  if (typeof window === 'undefined' || !document.body || window.__cfAdTopOffsetGuard) return
+// Measure fixed/sticky third-party banners at both viewport edges on mobile.
+// Keep the banners visible and clickable while moving the site's navigation away
+// from them and reserving scroll space for the bottom banner.
+function installMobileAdEdgeOffset() {
+  if (typeof window === 'undefined' || !document.body || window.__cfAdEdgeOffsetGuard) return
 
   const isMobile = () => window.matchMedia('(max-width: 639px)').matches
 
-  function updateOffset() {
+  function updateOffsets() {
     const app = document.querySelector('.cf-app')
     if (!app) return
 
     if (!isMobile()) {
       app.style.setProperty('--cf-mobile-ad-top-offset', '0px')
+      app.style.setProperty('--cf-mobile-ad-bottom-offset', '0px')
       return
     }
 
     const viewportWidth = document.documentElement.clientWidth || window.innerWidth
     const viewportHeight = window.innerHeight
     let topOffset = 0
+    let bottomOffset = 0
 
     document.querySelectorAll('body *').forEach(element => {
       if (!(element instanceof HTMLElement)) return
-      if (element.closest('.cf-ad-overlay-measured')) return
 
       const insideApp = Boolean(element.closest('.cf-app'))
       const insideAdSlot = Boolean(element.closest('.cf-ad-slot'))
-      // Ignore the site's own interface, but allow ads rendered inside AdSlot.
+      // Ignore native site UI; inspect only ad-slot content and external nodes.
       if (insideApp && !insideAdSlot) return
 
       const style = window.getComputedStyle(element)
       if (style.position !== 'fixed' && style.position !== 'sticky') return
 
       const rect = element.getBoundingClientRect()
-      const isTopBanner = rect.top <= 24 &&
-        rect.bottom > 0 &&
-        rect.height >= 24 &&
-        rect.height <= viewportHeight * 0.35 &&
-        rect.width >= viewportWidth * 0.5
+      const wideBanner = rect.width >= viewportWidth * 0.5
+      const reasonableHeight = rect.height >= 24 && rect.height <= viewportHeight * 0.35
+      if (!wideBanner || !reasonableHeight) return
 
-      if (isTopBanner) topOffset = Math.max(topOffset, Math.min(rect.bottom, 240))
+      if (rect.top <= 24 && rect.bottom > 0) {
+        topOffset = Math.max(topOffset, Math.min(rect.bottom, 240))
+      }
+
+      if (rect.bottom >= viewportHeight - 24 && rect.top < viewportHeight) {
+        bottomOffset = Math.max(bottomOffset, Math.min(viewportHeight - rect.top, 240))
+      }
     })
 
-    const next = Math.ceil(topOffset)
-    const current = Number.parseFloat(app.style.getPropertyValue('--cf-mobile-ad-top-offset')) || 0
-    if (Math.abs(current - next) >= 2) {
-      app.style.setProperty('--cf-mobile-ad-top-offset', next + 'px')
+    const nextTop = Math.ceil(topOffset)
+    const nextBottom = Math.ceil(bottomOffset)
+    const currentTop = Number.parseFloat(app.style.getPropertyValue('--cf-mobile-ad-top-offset')) || 0
+    const currentBottom = Number.parseFloat(app.style.getPropertyValue('--cf-mobile-ad-bottom-offset')) || 0
+
+    if (Math.abs(currentTop - nextTop) >= 2) {
+      app.style.setProperty('--cf-mobile-ad-top-offset', nextTop + 'px')
+    }
+    if (Math.abs(currentBottom - nextBottom) >= 2) {
+      app.style.setProperty('--cf-mobile-ad-bottom-offset', nextBottom + 'px')
     }
   }
 
@@ -122,11 +133,11 @@ function installMobileAdTopOffset() {
     updateQueued = true
     window.requestAnimationFrame(() => {
       updateQueued = false
-      updateOffset()
+      updateOffsets()
     })
   }
 
-  updateOffset()
+  updateOffsets()
   const observer = new MutationObserver(scheduleUpdate)
   observer.observe(document.body, {
     childList: true,
@@ -136,7 +147,7 @@ function installMobileAdTopOffset() {
   })
   window.addEventListener('resize', scheduleUpdate, { passive: true })
   window.addEventListener('orientationchange', scheduleUpdate, { passive: true })
-  window.__cfAdTopOffsetGuard = observer
+  window.__cfAdEdgeOffsetGuard = observer
 }
 const items = computed(() => {
   const list = ads.value?.slots?.[props.slot]
@@ -245,7 +256,7 @@ watch(
 )
 
 onMounted(async () => {
-  installMobileAdTopOffset()
+  installMobileAdEdgeOffset()
   await loadAds(false)
   startTimers()
 })
