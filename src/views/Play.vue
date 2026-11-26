@@ -309,7 +309,7 @@ async function load() {
   }
 }
 
-async // Temporary mobile route diagnostics. Remove after the Quark test is complete.
+// Temporary mobile route diagnostics. Remove after the Quark test is complete.
 const routeDiagnostics = ref({
   href: typeof window !== 'undefined' ? window.location.href : '',
   pathname: typeof window !== 'undefined' ? window.location.pathname : '',
