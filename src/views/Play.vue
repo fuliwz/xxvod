@@ -38,7 +38,7 @@
 </template>
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Hls from 'hls.js'
 import Plyr from 'plyr'
 import 'plyr/dist/plyr.css'
@@ -47,6 +47,7 @@ import { saveHistory } from '../utils/history'
 import VideoGrid from '../components/VideoGrid.vue'
 
 const route = useRoute()
+const router = useRouter()
 const item = ref(null)
 const related = ref([])
 const loading = ref(true)
@@ -232,8 +233,20 @@ async function initializePlayer({ autoplay = false } = {}) {
   }
 }
 
-async function selectEpisode(index) {
+function selectEpisode(index) {
   if (!activeSource.value?.episodes[index]) return
+  const query = { ...route.query, ep: String(index + 1) }
+  router.push({ path: route.path, query })
+}
+
+async function syncEpisodeFromUrl() {
+  if (!activeSource.value?.episodes?.length) return
+  const requested = Number(route.query.ep)
+  const index = Number.isFinite(requested) && requested > 0
+    ? Math.min(activeSource.value.episodes.length - 1, Math.trunc(requested) - 1)
+    : 0
+
+  if (episodeIndex.value === index) return
   episodeIndex.value = index
   await initializePlayer({ autoplay: true })
   if (activeEpisode.value) saveHistory(item.value, activeEpisode.value)
@@ -271,6 +284,12 @@ async function load() {
     if (detail) {
       related.value = await getRelatedVideos(detail, 16).catch(() => [])
       document.title = `${detail.title} - XXVOD`
+
+      const requestedEpisode = Number(route.query.ep)
+      episodeIndex.value = Number.isFinite(requestedEpisode) && requestedEpisode > 0
+        ? Math.min(activeSource.value?.episodes.length - 1 || 0, Math.trunc(requestedEpisode) - 1)
+        : 0
+
       await initializePlayer()
       if (activeEpisode.value) saveHistory(detail, activeEpisode.value)
     }
@@ -290,5 +309,6 @@ async function share() {
 }
 
 watch(() => route.params.id, load, { immediate: true })
+watch(() => route.query.ep, syncEpisodeFromUrl)
 onBeforeUnmount(() => { token++; cleanup() })
 </script>
