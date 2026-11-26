@@ -66,6 +66,50 @@ let rotationTimer = null
 let lastHtml = ''
 let htmlRendered = false
 
+// Some third-party banner scripts append fixed-position elements directly to
+// document.body instead of rendering inside the ad slot. On phones, normalize
+// only newly-added external high-layer overlays; never touch elements inside
+// the application root (including the top bar and bottom tab bar).
+function installMobileAdOverlayGuard() {
+  if (typeof window === 'undefined'' || !document.body || window.__cfAdOverlayGuard) return
+
+  const isMobile = () => window.matchMedia('(max-width: 639px)').matches
+
+  function normalize(node) {
+    if (!isMobile() || !(node instanceof HTMLElement)) return
+    if (node.closest('#app')) return
+
+    const candidates = [node, ...node.querySelectorAll('*')]
+    candidates.forEach(element => {
+      if (!(element instanceof HTMLElement) || element.closest('#app')) return
+      const style = window.getComputedStyle(element)
+      const zIndex = Number.parseInt(style.zIndex, 10)
+      const floating = style.position === 'fixed' || style.position === 'sticky'
+      const highLayer = Number.isFinite(zIndex) && zIndex >= 1000
+      if (!floating || (!highLayer && element.tagName !== 'IFRAME')) return
+
+      element.classList.add('cf-ad-overlay-normalized')
+      element.style.setProperty('position', 'static', 'important')
+      element.style.setProperty('inset', 'auto', 'important')
+      element.style.setProperty('top', 'auto', 'important')
+      element.style.setProperty('right', 'auto', 'important')
+      element.style.setProperty('bottom', 'auto', 'important')
+      element.style.setProperty('left', 'auto', 'important')
+      element.style.setProperty('transform', 'none', 'important')
+      element.style.setProperty('z-index', 'auto', 'important')
+      element.style.setProperty('max-width', '100%', 'important')
+    })
+  }
+
+  const observer = new MutationObserver(records => {
+    records.forEach(record => {
+      record.addedNodes.forEach(node => normalize(node))
+    })
+  })
+  observer.observe(document.body, { childList: true, subtree: true })
+  window.__cfAdOverlayGuard = observer
+}
+
 const items = computed(() => {
   const list = ads.value?.slots?.[props.slot]
   return Array.isArray(list)
