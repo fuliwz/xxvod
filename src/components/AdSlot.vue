@@ -1,4 +1,3 @@
-
 <template>
   <section
     v-if="enabled && (items.length || html)"
@@ -7,7 +6,7 @@
     aria-label="广告"
   >
     <a
-      v-for="ad in items"
+      v-for="ad in rotatedItems"
       :key="ad.id || ad.url"
       :href="ad.url || '#'"
       target="_blank"
@@ -41,11 +40,12 @@
 import {
   computed,
   onMounted,
+  onBeforeUnmount,
   nextTick,
   ref,
   watch
 } from 'vue'
-
+import { useRoute } from 'vue-router'
 import { getAds } from '../api/site'
 
 const props = defineProps({
@@ -55,94 +55,117 @@ const props = defineProps({
   }
 })
 
+const route = useRoute()
 const enabled = ref(false)
 const ads = ref({})
 const htmlRoot = ref(null)
+const rotationIndex = ref(0)
+
+let refreshTimer = null
+let rotationTimer = null
+let lastHtml = ''
 
 const items = computed(() => {
   const list = ads.value?.slots?.[props.slot]
-
   return Array.isArray(list)
     ? list.filter(ad => ad && ad.enabled !== false)
     : []
 })
 
-const html = computed(() => {
-  return String(ads.value?.html?.[props.slot] || '')
+// Rotate the display order so the first visible placement changes periodically
+// without removing the other configured ads from the slot.
+const rotatedItems = computed(() => {
+  const list = items.value
+  if (list.length < 2) return list
+
+  const offset = rotationIndex.value % list.length
+  return list.slice(offset).concat(list.slice(0, offset))
 })
 
-/**
- * 渲染自定义广告 HTML
- */
+const html = computed(() => String(ads.value?.html?.[props.slot] || ''))
+
 function renderHtml() {
   const root = htmlRoot.value
+  const source = html.value
 
-  if (!root || !html.value || !enabled.value) {
-    return
-  }
+  if (!root || !source || !enabled.value || source === lastHtml) return
 
-  // 防止重复执行
+  lastHtml = source
   root.innerHTML = ''
 
   const holder = document.createElement('div')
-  holder.innerHTML = html.value
+  holder.innerHTML = source
 
-  const nodes = Array.from(holder.childNodes)
-
-  nodes.forEach(node => {
-    if (node.nodeType === Node.ELEMENT_NODE &&
-        node.tagName.toLowerCase() === 'script') {
-
+  Array.from(holder.childNodes).forEach(node => {
+    if (
+      node.nodeType === Node.ELEMENT_NODE &&
+      node.tagName.toLowerCase() === 'script'
+    ) {
       const script = document.createElement('script')
 
-      Array.from(node.attributes).forEach(attr => {
-        script.setAttribute(attr.name, attr.value)
+      Array.from(node.attributes).forEach(attribute => {
+        script.setAttribute(attribute.name, attribute.value)
       })
 
       script.textContent = node.textContent || ''
-
       root.appendChild(script)
-
     } else {
       root.appendChild(node)
     }
   })
 }
 
-/**
- * DOM 更新后再执行广告渲染
- */
+async function loadAds(force = false) {
+  try {
+    const result = await getAds(force)
+    ads.value = result || {}
+    enabled.value = ads.value.enabled === true
+    rotationIndex.value = 0
+    await nextTick()
+    renderHtml()
+  } catch (error) {
+    console.error('[XXVOD Ads] 广告加载失败:', error)
+  }
+}
+
+function startTimers() {
+  // Rotate ad order every 30 seconds when a slot contains multiple ads.
+  rotationTimer = window.setInterval(() => {
+    if (items.value.length > 1) {
+      rotationIndex.value = (rotationIndex.value + 1) % items.value.length
+    }
+  }, 30000)
+
+  // Refresh the server-side ad configuration every 60 seconds.
+  refreshTimer = window.setInterval(() => {
+    loadAds(true)
+  }, 60000)
+}
+
 watch(
-  [html, enabled],
+  html,
   async () => {
     await nextTick()
     renderHtml()
   },
-  {
-    flush: 'post',
-    immediate: true
-  }
+  { flush: 'post' }
 )
 
-/**
- * 获取广告配置
- */
+// Refresh on SPA navigation as well. Both ad slots share the same in-flight
+// request through getAds(), avoiding duplicate API requests on one navigation.
+watch(
+  () => route.fullPath,
+  () => loadAds(true),
+  { flush: 'post' }
+)
+
 onMounted(async () => {
-  try {
-    const result = await getAds()
+  await loadAds(false)
+  startTimers()
+})
 
-    ads.value = result || {}
-
-    enabled.value = ads.value.enabled === true
-
-    await nextTick()
-
-    renderHtml()
-
-  } catch (error) {
-    console.error('[XXVOD Ads] 广告加载失败:', error)
-
-    enabled.value = false
-  }
+onBeforeUnmount(() => {
+  if (refreshTimer !== null) window.clearInterval(refreshTimer)
+  if (rotationTimer !== null) window.clearInterval(rotationTimer)
 })
 </script>
