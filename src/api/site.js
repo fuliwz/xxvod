@@ -65,8 +65,8 @@ export const getCategories = async () => {
 
 export const getFriendlyLinks = () => linksPromise || (linksPromise = apiGet({ action: 'links' }).catch(error => { linksPromise = null; throw error }))
 
-// Share one in-flight request between the top and bottom ad slots. Keep a short
-// cache for ordinary reads, while force=true refreshes the server configuration.
+// Share one in-flight request between the top and bottom ad slots. Force refresh
+// bypasses both the short in-memory cache and the persistent browser cache.
 export function getAds(force = false) {
   const now = Date.now()
   if (!force && adsCache && now - adsCacheAt < 30000) {
@@ -74,7 +74,7 @@ export function getAds(force = false) {
   }
   if (adsPromise) return adsPromise
 
-  adsPromise = apiGet({ action: 'ads' })
+  adsPromise = apiGet({ action: 'ads' }, { cache: !force })
     .then(data => {
       adsCache = data || {}
       adsCacheAt = Date.now()
