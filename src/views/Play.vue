@@ -44,10 +44,12 @@ import Plyr from 'plyr'
 import 'plyr/dist/plyr.css'
 import { getDetail, getRelatedVideos, parsePlaySources } from '../api/vod'
 import { saveHistory } from '../utils/history'
+import { useSite } from '../composables/useSite'
 import VideoGrid from '../components/VideoGrid.vue'
 
 const route = useRoute()
 const router = useRouter()
+const { config } = useSite()
 const item = ref(null)
 const related = ref([])
 const loading = ref(true)
@@ -283,7 +285,7 @@ async function load() {
     item.value = detail
     if (detail) {
       related.value = await getRelatedVideos(detail, 16).catch(() => [])
-      document.title = `${detail.title} - XXVOD`
+      document.title = `${detail.title} - ${config.value.title || config.value.name || 'XXVOD'}`
 
       const requestedEpisode = Number(route.query.ep)
       episodeIndex.value = Number.isFinite(requestedEpisode) && requestedEpisode > 0
