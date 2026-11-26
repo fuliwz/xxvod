@@ -32,10 +32,14 @@
   </section>
 </template>
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { getRandomHotVideos, getLatestVideos, getHotVideos, getScoreVideos, VIDEO_PAGE_SIZE } from '../api/vod'
 import { getCategories } from '../api/site'
 import VideoGrid from '../components/VideoGrid.vue'
+
+const route = useRoute()
+const router = useRouter()
 const popular = ref([])
 const latest = ref([])
 const categories = ref([])
@@ -43,28 +47,49 @@ const rootCategories = computed(() => categories.value.filter(item => Number(ite
 const childCategories = computed(() => categories.value.filter(item => Number(item.type_pid || 0) !== 0))
 const loading = ref(true)
 const tabs = [{key:'time',label:'最新发布'},{key:'hits',label:'最多播放'},{key:'score',label:'高分内容'}]
-const active = ref('time')
+const validSorts = ['time', 'hits', 'score']
+const active = computed(() => validSorts.includes(String(route.query.sort || 'time')) ? String(route.query.sort || 'time') : 'time')
+
 async function load() {
   loading.value = true
   try {
+    const sort = active.value
+    const loaders = { time: getLatestVideos, hits: getHotVideos, score: getScoreVideos }
     const [hot, fresh, cats] = await Promise.all([
-      getRandomHotVideos(VIDEO_PAGE_SIZE), getLatestVideos(1, VIDEO_PAGE_SIZE), getCategories()
+      getRandomHotVideos(VIDEO_PAGE_SIZE),
+      loaders[sort](1, VIDEO_PAGE_SIZE),
+      getCategories()
     ])
     popular.value = hot.list
     latest.value = fresh.list
     categories.value = Array.isArray(cats) ? cats.filter(item => item && item.type_id != null) : []
   } catch (_) {
-    popular.value = []; latest.value = []
-  } finally { loading.value = false }
+    popular.value = []
+    latest.value = []
+  } finally {
+    loading.value = false
+  }
 }
-async function change(key) {
-  active.value = key
+
+function change(key) {
+  if (!validSorts.includes(key) || key === active.value) return
+  const query = { ...route.query }
+  if (key === 'time') delete query.sort
+  else query.sort = key
+  router.push({ path: '/', query })
+}
+
+watch(() => route.query.sort, async () => {
+  const loaders = { time: getLatestVideos, hits: getHotVideos, score: getScoreVideos }
   loading.value = true
   try {
-    const loaders = { time: getLatestVideos, hits: getHotVideos, score: getScoreVideos }
-    latest.value = (await loaders[key](1, VIDEO_PAGE_SIZE)).list
-  } catch (_) { latest.value = [] }
-  finally { loading.value = false }
-}
+    latest.value = (await loaders[active.value](1, VIDEO_PAGE_SIZE)).list
+  } catch (_) {
+    latest.value = []
+  } finally {
+    loading.value = false
+  }
+})
+
 onMounted(load)
 </script>
