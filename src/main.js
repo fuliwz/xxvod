@@ -30,4 +30,12 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 })
 })
 
+// Force a full document navigation after every real SPA route change.
+// This keeps the browser address bar in sync on mobile browsers that may
+// visually retain the previous URL during client-side navigation.
+router.afterEach((to, from, failure) => {
+  if (failure || !from.matched.length || to.fullPath === from.fullPath) return
+  window.location.replace(to.fullPath)
+})
+
 createApp(App).use(router).mount('#app')
