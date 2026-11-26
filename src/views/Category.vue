@@ -50,5 +50,10 @@ async function load() {
   finally { if (current === token) loading.value = false }
 }
 function go(next) { router.push({ query: { ...route.query, pg: next } }) }
+watch(title, value => {
+  const n = Number(route.query.pg)
+  const pageLabel = Number.isFinite(n) && n > 1 ? ` - 第${Math.trunc(n)}页` : ''
+  document.title = `${value}${pageLabel} - XXVOD`
+}, { immediate: true })
 watch(() => [route.params.id, route.query.pg, props.latest, props.popular], load, { immediate: true })
 </script>
