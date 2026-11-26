@@ -104,3 +104,28 @@ button,input{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:
 .cf-video-thumb.is-loaded>img{opacity:1}
 .cf-video-image-fallback{position:absolute;z-index:1;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:#171326;color:#777188;font-size:11px}
 .cf-video-image-fallback i{font-size:24px}
+
+
+/* Mobile: keep third-party fixed banners from covering page content or navigation.
+   Ad scripts that append overlays outside #app are normalized by AdSlot.vue. */
+@media(max-width:639px){
+  .cf-ad-overlay-normalized{
+    display:block!important;
+    float:none!important;
+    clear:both!important;
+    margin:8px auto!important;
+    width:auto!important;
+    max-width:100%!important;
+    max-height:120px!important;
+    overflow:hidden!important;
+    visibility:visible!important;
+  }
+  .cf-ad-overlay-normalized iframe,
+  iframe.cf-ad-overlay-normalized{
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    max-height:120px!important;
+    margin:0 auto!important;
+  }
+}
