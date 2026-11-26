@@ -123,6 +123,7 @@ function renderHtml(force = false) {
 
 async function loadAds(force = false, rerenderHtml = false, rotate = false) {
   try {
+    const previousHtml = html.value
     const result = await getAds(force)
     ads.value = result || {}
     enabled.value = ads.value.enabled === true
@@ -132,7 +133,9 @@ async function loadAds(force = false, rerenderHtml = false, rotate = false) {
       rotationIndex.value = 0
     }
     await nextTick()
-    renderHtml(rerenderHtml)
+    // If the payload changed, the html watcher already rendered the new code.
+    // Force a rerun only when the same payload is reused on a new SPA route.
+    renderHtml(rerenderHtml && previousHtml === html.value)
   } catch (error) {
     console.error('[XXVOD Ads] 广告加载失败:', error)
   }
