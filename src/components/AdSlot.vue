@@ -77,36 +77,53 @@ function installMobileAdOverlayGuard() {
 
   function normalize(node) {
     if (!isMobile() || !(node instanceof HTMLElement)) return
+
     const candidates = [node, ...node.querySelectorAll('*')]
     candidates.forEach(element => {
       if (!(element instanceof HTMLElement)) return
-      const insideAdSlot = Boolean(element.closest('.cf-ad-slot'))
-      if (element.closest('#app') && !insideAdSlot) return
-      const style = window.getComputedStyle(element)
-      const zIndex = Number.parseInt(style.zIndex, 10)
-      const floating = style.position === 'fixed' || style.position === 'sticky'
-      const highLayer = Number.isFinite(zIndex) && zIndex >= 1000
-      if (!floating || (!insideAdSlot && !highLayer && element.tagName !== 'IFRAME')) return
 
-      element.classList.add('cf-ad-overlay-normalized')
-      element.style.setProperty('position', 'static', 'important')
-      element.style.setProperty('inset', 'auto', 'important')
-      element.style.setProperty('top', 'auto', 'important')
-      element.style.setProperty('right', 'auto', 'important')
-      element.style.setProperty('bottom', 'auto', 'important')
-      element.style.setProperty('left', 'auto', 'important')
-      element.style.setProperty('transform', 'none', 'important')
-      element.style.setProperty('z-index', 'auto', 'important')
-      element.style.setProperty('max-width', '100%', 'important')
+      // Never touch the site's own header, tab bar, sidebar or other app UI.
+      const insideApp = Boolean(element.closest('#app'))
+      const insideAdSlot = Boolean(element.closest('.cf-ad-slot'))
+      if (insideApp && !insideAdSlot) return
+
+      const style = window.getComputedStyle(element)
+      const floating = style.position === 'fixed' || style.position === 'sticky'
+      const zIndex = Number.parseInt(style.zIndex, 10)
+      const elevated = Number.isFinite(zIndex) && zIndex >= 100
+      const isOutsideApp = !insideApp
+
+      // Third-party overlays are commonly appended outside #app, or injected
+      // into the ad slot. Hide them instead of converting them to static flow:
+      // this prevents an overlay from covering navigation or shifting layout.
+      if (!(floating || (isOutsideApp && elevated))) return
+
+      element.classList.add('cf-ad-overlay-blocked')
+      element.style.setProperty('display', 'none', 'important')
+      element.style.setProperty('visibility', 'hidden', 'important')
+      element.style.setProperty('pointer-events', 'none', 'important')
+      element.setAttribute('aria-hidden', 'true')
     })
   }
 
+  // Scan existing nodes as well as later insertions. Attribute observation is
+  // important because some ad networks insert a blank node and style it later.
+  normalize(document.body)
   const observer = new MutationObserver(records => {
     records.forEach(record => {
-      record.addedNodes.forEach(node => normalize(node))
+      if (record.type === 'attributes') {
+        normalize(record.target)
+      } else {
+        record.addedNodes.forEach(node => normalize(node))
+      }
     })
   })
-  observer.observe(document.body, { childList: true, subtree: true })
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['style', 'class']
+  })
   window.__cfAdOverlayGuard = observer
 }
 
