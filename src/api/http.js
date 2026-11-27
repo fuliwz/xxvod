@@ -169,7 +169,8 @@ async function decryptApiResponse(payload) {
     return payload
   }
 
-  if (Number(payload.version) !== 1) {
+  const version = Number(payload.version || 1)
+  if (version !== 1 && version !== 2) {
     throw new Error('不支持的 API 加密协议版本')
   }
 
@@ -191,16 +192,42 @@ async function decryptApiResponse(payload) {
   encryptedBytes.set(ciphertext)
   encryptedBytes.set(tag, ciphertext.length)
 
+  let plaintext
   try {
-    const plaintext = await globalThis.crypto.subtle.decrypt(
+    plaintext = new Uint8Array(await globalThis.crypto.subtle.decrypt(
       { name: 'AES-GCM', iv, tagLength: 128 },
       key,
       encryptedBytes
-    )
-
-    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(plaintext))
+    ))
   } catch {
     throw new Error('API 数据解密失败，请检查前后端加密密钥是否一致')
+  }
+
+  // v1 is the existing plaintext-JSON encryption format.
+  // v2 decrypts to either gzip(JSON) or plain JSON (compression=none).
+  if (version === 2) {
+    const compression = payload.compression || 'none'
+    if (compression === 'gzip') {
+      if (typeof DecompressionStream === 'undefined') {
+        throw new Error('当前浏览器不支持 Gzip 解压，请升级浏览器')
+      }
+      try {
+        const stream = new Blob([plaintext]).stream().pipeThrough(
+          new DecompressionStream('gzip')
+        )
+        plaintext = new Uint8Array(await new Response(stream).arrayBuffer())
+      } catch {
+        throw new Error('API Gzip 数据解压失败')
+      }
+    } else if (compression !== 'none') {
+      throw new Error(`不支持的 API 压缩格式：${compression}`)
+    }
+  }
+
+  try {
+    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(plaintext))
+  } catch {
+    throw new Error('API 数据解密成功，但 JSON 格式无效')
   }
 }
 
